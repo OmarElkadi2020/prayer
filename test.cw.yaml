@@ -1,0 +1,41 @@
+description: >
+  Sample EtherNet/IP commissioning file to connect a machine using the Ethernet/IP protocol
+
+metadata:
+  name: EthernetIP Machine Connection
+  provider: cybus
+  version: 1.0.0
+  homepage: https://www.cybus.io
+
+parameters:
+  host:
+    type: string
+    default: 192.168.10.99
+
+resources:
+  ethernetIpConnection:
+    type: Cybus::Connection
+    properties:
+      protocol: EthernetIp
+      connection:
+        host: !ref host
+
+  readEndpoint:
+    type: Cybus::Endpoint
+    properties:
+      protocol: EthernetIp
+      connection: !ref ethernetIpConnection
+      read:
+        tagName: dn_count
+        programName: SimulationMain
+        tagType: DINT
+
+  writeEndpoint:
+    type: Cybus::Endpoint
+    properties:
+      protocol: EthernetIp
+      connection: !ref ethernetIpConnection
+      write:
+        tagName: dn_count
+        programName: SimulationMain
+        tagType: DINT
