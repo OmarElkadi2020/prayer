@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from typing import Set
 
 from apscheduler.schedulers.blocking import BlockingScheduler
+from playsound import playsound
 
 from .config import TZ, LOG, NET_OFF_CMD, NET_ON_CMD, FOCUS_DELAY, FOCUS_LENGTH
 
@@ -32,7 +33,7 @@ def _safe_close():
 # -- focus mode -----------------------------------------------------------
 
 import os
-def focus_mode():
+def focus_mode(disable_network: bool = True):
     LOG.info("🕌 Focus‑mode ON")
     
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -51,7 +52,8 @@ def focus_mode():
         cwd=script_dir,
         env=env
     )
-    subprocess.call(NET_OFF_CMD, shell=True)
+    if disable_network:
+        subprocess.call(NET_OFF_CMD, shell=True)
     # _safe_close()
     resume = datetime.now(TZ) + FOCUS_LENGTH
     tmp_scheduler = BlockingScheduler(timezone=TZ)
@@ -59,6 +61,11 @@ def focus_mode():
     tmp_scheduler.start(paused=False)
 
 # -- audio playback ---
-def play(cmd: str):
-    LOG.info("📢 Play %s", cmd)
-    subprocess.Popen(cmd, shell=True)
+
+
+def play(audio_path: str):
+    LOG.info("📢 Playing %s", audio_path)
+    try:
+        playsound(audio_path)
+    except Exception as e:
+        LOG.error(f"Error playing audio with playsound: {e}")

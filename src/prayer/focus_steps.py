@@ -2,205 +2,416 @@
 # -*- coding: utf-8 -*-
 
 """
-نافذة «تهيئة الخشوع» التفاعلية
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-• تتكوّن من ثـماني مراحل: من ختم المهمّة وحتى المكافأة بعد الصلاة.
-• لكل مرحلة عنوان واضح + شرح عملي مختصر.
-• ينتقل المستخدم للخطوة التالية بالزر «تم».
-• عند الوصول إلى النهاية يظهر تنبيه “انتهيت؛ تقبّل الله طاعتك”.
+نافذة «تهيئة الخشوع» التفاعلية (نسخة مُحسَّنة)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+• تطبيق إرشادي للمساعدة على تهيئة النفس للخشوع في الصلاة.
+• يتكوّن من ثـماني مراحل: من ختم المهمّة وحتى المكافأة بعد الصلاة.
+• لكل مرحلة عنوان واضح وشرح عملي مختصر ومُلهم.
+• تصميم عصري وداكن مع دعم كامل للغة العربية (من اليمين لليسار).
+• يتكيف حجم النافذة تلقائيًا مع طول النص في كل خطوة.
 """
 
-from PyQt5.QtWidgets import (
+import sys
+import os
+import re
+import random
+from importlib import resources
+from PySide6.QtWidgets import (
     QApplication,
     QWidget,
     QLabel,
     QPushButton,
     QVBoxLayout,
-    QGraphicsDropShadowEffect,
+    QHBoxLayout,
+    QScrollArea,
+    QSizePolicy,
 )
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont, QColor, QIcon
-from PyQt5.QtMultimedia import QSound
-import sys, os
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QFont, QIcon, QGuiApplication
+from PySide6.QtMultimedia import QSoundEffect
 
-# ------------------------------------------------------------------
-# ❶ محتوى الخطوات: (عنوان، شرح)
-# ------------------------------------------------------------------
-STEPS = [
-    (
-        "خَتمُ المهمّة",
-        "احفظ الملف وأغلق التبويبات المفتوحة، ثم اكتب سطرًا: "
-        "«أول شيء سأفعله بعد الصلاة هو…» حتى لا ينشغل عقلك بالعمل أثناء الصلاة.",
-    ),
-    (
-        "طقس الإغلاق",
-        "قل بصوت مسموع: «انتهيت من العمل حتى بعد الصلاة»، ثم أوقف إشعارات "
-        "البورصة والبريد. هذا يُغلق الحلقة الذهنية ويُخفِّض التوتر.",
-    ),
-    (
-        "ميكرو-استراحة جسدية",
-        "تمدّد كتفيك 30 ثانية، ثم امش حول الغرفة 30 ثانية؛ الحركة القصيرة "
-        "تنعش الدورة الدموية وتطرد الإرهاق الذهني.",
-    ),
-    (
-        "تنفّس مربّع 4-4-4-4",
-        "شهيق 4 عدّات → حبس 4 → زفير 4 → حبس 4 (كرِّر 4 دورات). "
-        "هذا التمرين يفعّل الجهاز الباراسمبثاوي ويصفّي الذهن.",
-    ),
-    (
-        "وضوء واعٍ",
-        "توضّأ بماء فاتر وركّز إحساس الماء على الوجه واليدين. "
-        "المحفّز الحسي يساعد الدماغ على «إعادة الضبط».",
-    ),
-    (
-        "نيّة صريحة",
-        "قف قبل التكبير وقل: «اللهم إن هذا وقتك، أترك تجارتي إليك»؛ "
-        "تثبيت النيّة يطمئن العقل المنطقي ويُحضِّر القلب.",
-    ),
-    (
-        "مفاتيح الخشوع",
-        "ركّز إحساس القدمين على السجادة في القيام، امتداد الظهر في الركوع، "
-        "ودفء الجبهة في السجود؛ تركيز حسي واحد يحرّر العقل من الشرود.",
-    ),
-    (
-        "مكافأة فورية",
-        "بعد التسليم: اكتب نعمةً واحدة أو اشرب رشفة ماء بارد. "
-        "اربط الصلاة بمكافأة إيجابية لتثبيت العادة.",
-    ),
-]
+# --- Configuration Constants ---
+# Using constants for better maintainability and clarity.
+APP_TITLE = "تهيئة الخشوع"
+WINDOW_WIDTH = 400
+FONT_FAMILY = "Noto Sans Arabic"
 
-# ------------------------------------------------------------------
-# ❷ مسارات الأيقونة والصوت (اختيارية)
-# ------------------------------------------------------------------
-ICON_PATH  = "assets/mosque.png"          # عدّل إذا لزم
-SOUND_PATH = "assets/complete_sound.wav"  # عدّل إذا لزم
-if not os.path.exists(SOUND_PATH):
-    SOUND_PATH = ""                       # تجاهل الصوت إن لم يوجد
+# ==================================================================
+# ❶ Asset and Content Loading
+# ==================================================================
 
-# ------------------------------------------------------------------
-# ❸ نافذة الخطوات
-# ------------------------------------------------------------------
+def get_asset_path(package, resource):
+    """
+    Safely retrieves the path to a resource file within a package.
+    Returns an empty string if the file is not found.
+    """
+    try:
+        with resources.path(package, resource) as p:
+            return str(p)
+    except (FileNotFoundError, ModuleNotFoundError):
+        print(f"Warning: Asset '{resource}' not found in package '{package}'.")
+        return ""
+
+def load_steps_from_file(file_path):
+    """
+    Loads step content from a text file.
+    Steps are separated by '---STEP_START---'.
+    Each step has a title (first line) and a description.
+    """
+    if not file_path:
+        return [("خطأ", "ملف محتوى الخطوات غير موجود.")]
+
+    steps = []
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Split content into individual step blocks
+        raw_steps = content.split('---STEP_START---')
+        for raw_step in raw_steps:
+            if not raw_step.strip():
+                continue
+            
+            # The description part ends at ---STEP_END---, but we only need the content before it.
+            step_content = raw_step.split('---STEP_END---')[0].strip()
+            
+            # The title is the first line of the step content.
+            title_end_idx = step_content.find('\n')
+            if title_end_idx != -1:
+                title = step_content[:title_end_idx].strip()
+                description = step_content[title_end_idx:].strip()
+            else:
+                title = step_content
+                description = ""
+            
+            steps.append((title, description))
+    except FileNotFoundError:
+        print(f"Error: Could not find the steps content file at '{file_path}'.")
+        return [("خطأ", f"لم يتم العثور على ملف المحتوى:\n{file_path}")]
+    
+    return steps
+
+# --- Load Assets ---
+ICON_PATH = get_asset_path('prayer.assets', 'mosque.png')
+SOUND_PATH = get_asset_path('prayer.assets', 'complete_sound.wav')
+STEPS_FILE_PATH = get_asset_path('prayer.config', 'steps_content.txt')
+STEPS = load_steps_from_file(STEPS_FILE_PATH)
+
+
+# ==================================================================
+# ❷ Main Application Window
+# ==================================================================
+
 class StepWindow(QWidget):
+    """
+    The main window for the application. It displays steps sequentially
+    and handles user navigation. The window resizes to fit its content.
+    """
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("تهيئة الخشوع")
-        self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
-        self.setFixedSize(650, 260)
-        self.setWindowFlags(
-            self.windowFlags()
-            | Qt.WindowType.WindowStaysOnTopHint
-            | Qt.WindowType.FramelessWindowHint
-        )
-        # خلفية متدرّجة ناعمة
+        
+        # --- State Management ---
+        self.current_step_index = 0
+        self.all_steps = STEPS + [("انتهيت", "تقبّل الله طاعتك.")]
+
+        # --- Window Configuration ---
+        self.setWindowTitle(APP_TITLE)
+        if ICON_PATH:
+            self.setWindowIcon(QIcon(ICON_PATH))
+        
+        # --- Dynamic Sizing Setup ---
+        self.setMinimumWidth(WINDOW_WIDTH)
+        # Set max height to prevent window from becoming excessively tall
+        max_height = QGuiApplication.primaryScreen().availableGeometry().height() * 0.9
+        self.setMaximumHeight(int(max_height))
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.MinimumExpanding)
+
+        self.setLayoutDirection(Qt.RightToLeft) # Set layout direction for the whole window
+        
+        # --- Initial Setup ---
+        self.setup_stylesheet()
+        self.setup_ui_components()
+        self.setup_layouts()
+        self.setup_connections()
+        self.setup_sound_effect()
+
+        # --- First UI Update ---
+        self.update_ui_for_current_step()
+
+    def setup_stylesheet(self):
+        """Sets the global QSS stylesheet for the application."""
         self.setStyleSheet(
-            """
-            QWidget {
-                background: qlineargradient(
-                    x1: 0, y1: 0, x2: 1, y2: 1,
-                    stop: 0 #f8f9ff, stop: 1 #e7efff
-                );
-                border-radius: 12px;
-            }
-        """
-        )
-
-        # ظل دائري خفيف
-        shadow = QGraphicsDropShadowEffect(self)
-        shadow.setXOffset(0)
-        shadow.setYOffset(4)
-        shadow.setColor(QColor(60, 60, 110, 85))
-        self.setGraphicsEffect(shadow)
-
-        # تخطيط عمودي
-        self.layout = QVBoxLayout(self)
-        self.setContentsMargins(32, 24, 32, 22)
-
-        # أيقونة
-        if os.path.exists(ICON_PATH):
-            icon_lbl = QLabel()
-            icon_lbl.setPixmap(QIcon(ICON_PATH).pixmap(48, 48))
-            icon_lbl.setAlignment(Qt.AlignCenter)
-            self.layout.addWidget(icon_lbl, alignment=Qt.AlignCenter)
-
-        # عنوان الخطوة
-        self.title_lbl = QLabel()
-        self.title_lbl.setFont(QFont("Cairo", 17, QFont.Bold))
-        self.title_lbl.setStyleSheet("color:#243b66;")
-        self.title_lbl.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-        self.layout.addWidget(self.title_lbl)
-
-        # شرح الخطوة
-        self.desc_lbl = QLabel()
-        self.desc_lbl.setFont(QFont("Cairo", 14))
-        self.desc_lbl.setStyleSheet("color:#37474f;")
-        self.desc_lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
-        self.desc_lbl.setWordWrap(True)
-        self.layout.addWidget(self.desc_lbl)
-
-        # زر “تم”
-        self.btn = QPushButton("تم")
-        self.btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn.setFixedHeight(40)
-        self.btn.setFont(QFont("Cairo", 14, QFont.Bold))
-        self.btn.setStyleSheet(
-            """
-            QPushButton {
-                color: #284c72;
-                background: qlineargradient(
-                    x1:0, y1:0, x2:1, y2:1,
-                    stop:0 #f0e9ff, stop:1 #c8e6ff
-                );
+            f"""
+            QWidget {{
+                background-color: #1a1a1a;
+                border-radius: 18px;
+                border: 1px solid #333333;
+                font-family: "{FONT_FAMILY}", "Segoe UI", "Arial", sans-serif;
+                color: #ffffff;
+            }}
+            QLabel#stepTitle {{
+                font-size: 26px;
+                font-weight: bold;
+                padding-bottom: 10px;
+            }}
+            QLabel#sectionTitle {{
+                color: #e0e0e0;
+                font-size: 18px;
+                font-weight: bold;
+                margin-top: 15px;
+            }}
+            QLabel#sectionContent {{
+                font-size: 16px;
+                margin-bottom: 10px;
+                padding-right: 15px; /* Indent content for clarity */
+            }}
+            QPushButton {{
+                color: #ffffff;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #3a3a3a, stop:1 #5a5a5a);
                 border: none;
-                border-radius: 14px;
-                padding: 0 38px;
-            }
-            QPushButton:pressed { background: #b9e3ff; }
-        """
+                border-radius: 18px;
+                padding: 12px 30px;
+                font-size: 18px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #4a4a4a, stop:1 #6a6a6a);
+            }}
+            QPushButton:pressed {{ background: #2a2a2a; }}
+            QPushButton#navButton {{
+                background: #2a2a2a;
+                border: 1px solid #555555;
+                border-radius: 12px;
+                padding: 5px 15px;
+                font-size: 14px;
+                font-weight: normal;
+            }}
+            QPushButton#navButton:hover {{ background: #3a3a3a; }}
+            QPushButton#navButton:pressed {{ background: #1a1a1a; }}
+            QPushButton:disabled {{
+                background-color: #404040;
+                color: #888888;
+            }}
+            QScrollArea {{
+                border: none;
+                background-color: transparent;
+            }}
+            QScrollBar:vertical {{
+                border: none;
+                background: #2a2a2a;
+                width: 10px;
+                margin: 0px;
+                border-radius: 5px;
+            }}
+            QScrollBar::handle:vertical {{
+                background: #555555;
+                min-height: 20px;
+                border-radius: 5px;
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+                height: 0px;
+            }}
+            """
         )
-        self.layout.addWidget(self.btn, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        # مولّد الخطوات
-        self.steps = iter(STEPS + [("انتهيت؛ تقبّل الله طاعتك", "")])
-        self.btn.clicked.connect(self.next_step)
-        self.next_step()
+    def setup_ui_components(self):
+        """Initializes all UI widgets."""
+        # --- Main Title ---
+        self.title_lbl = QLabel("", objectName="stepTitle")
+        self.title_lbl.setAlignment(Qt.AlignCenter)
+        self.title_lbl.setWordWrap(True)
 
-    # تشغيل صوت عند الانتقال
-    def play_sound(self):
+        # --- Scrollable Content Area ---
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        
+        self.content_widget = QWidget()
+        self.content_layout = QVBoxLayout(self.content_widget)
+        self.content_layout.setAlignment(Qt.AlignTop)
+        self.content_layout.setContentsMargins(0, 0, 10, 0) # Margin on the left (due to RTL) for scrollbar
+        self.scroll_area.setWidget(self.content_widget)
+
+        # --- Navigation Controls ---
+        self.prev_btn = QPushButton("السابق", objectName="navButton")
+        self.next_btn = QPushButton("التالي", objectName="navButton")
+        self.step_counter_lbl = QLabel("", alignment=Qt.AlignCenter)
+        
+        # --- Main Action Button ---
+        self.action_btn = QPushButton("تم")
+        self.action_btn.setCursor(Qt.PointingHandCursor)
+        self.action_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+    def setup_layouts(self):
+        """Arranges UI widgets into layouts."""
+        # --- Navigation Layout ---
+        nav_layout = QHBoxLayout()
+        nav_layout.addWidget(self.next_btn)
+        nav_layout.addWidget(self.step_counter_lbl, 1) # Add stretch factor
+        nav_layout.addWidget(self.prev_btn)
+
+        # --- Main Layout ---
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(25, 25, 25, 25)
+        main_layout.setSpacing(15)
+        
+        main_layout.addWidget(self.title_lbl)
+        main_layout.addWidget(self.scroll_area, 1) # Content area takes available space
+        main_layout.addLayout(nav_layout)
+        main_layout.addWidget(self.action_btn)
+
+    def setup_connections(self):
+        """Connects widget signals to appropriate slots."""
+        self.action_btn.clicked.connect(self.handle_action_button)
+        self.next_btn.clicked.connect(self.go_to_next_step)
+        self.prev_btn.clicked.connect(self.go_to_previous_step)
+
+    def setup_sound_effect(self):
+        """Initializes the sound effect player."""
+        self.sound_effect = QSoundEffect()
         if SOUND_PATH:
-            try:
-                QSound.play(SOUND_PATH)
-            except Exception:
-                pass
+            self.sound_effect.setSource(QUrl.fromLocalFile(SOUND_PATH))
+            self.sound_effect.setVolume(0.7)
 
-    def next_step(self):
-        try:
-            title, desc = next(self.steps)
-            self.play_sound()
+    def parse_and_display_step_content(self, description):
+        """Parses the description and populates the content area."""
+        # Clear previous content
+        while self.content_layout.count():
+            child = self.content_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
 
-            # عند النهاية
-            if not desc:  # السطر الأخير بلا وصف
-                self.title_lbl.setText(f"<div dir='rtl' align='center'>{title}</div>")
-                self.desc_lbl = QLabel()
-                self.btn.setText("إغلاق")
-                return
+        # Regex to find sections like **الهدف:**, **الدليل:**, *الفائدة الروحية:*
+        goal_pattern = re.compile(r'\*\*الهدف:\*\*\s*(.*?)(?=\n\d+\.\s\*\*الدليل:|\Z)', re.DOTALL)
+        evidence_pattern = re.compile(r'\d+\.\s\*\*الدليل:\*\*\s*(.*?)\s*\*الفائدة الروحية:\*\s*(.*?)(?=\n\d+\.\s\*\*الدليل:|\Z)', re.DOTALL)
+        
+        goals = goal_pattern.findall(description)
+        evidences = evidence_pattern.findall(description)
 
-            # نصوص عادية
-            self.title_lbl.setText(f"<div dir='rtl' align='center'>{title}</div>")
-            self.desc_lbl.setText(f"<div dir='rtl' align='right'>{desc}</div>")
-            self.btn.setText("تم")
+        display_items = []
+        if goals:
+            display_items.append(('goal', random.choice(goals).strip()))
+        if evidences:
+            evidence_text, benefit_text = random.choice(evidences)
+            display_items.append(('evidence', (evidence_text.strip(), benefit_text.strip())))
+        
+        random.shuffle(display_items)
 
-        except StopIteration:
+        if not display_items:
+             # If no special sections, display the whole description
+            content_lbl = QLabel(description, objectName="sectionContent")
+            content_lbl.setWordWrap(True)
+            self.content_layout.addWidget(content_lbl)
+            return
+
+        for item_type, content in display_items:
+            if item_type == 'goal':
+                self.content_layout.addWidget(QLabel("<b>الهدف:</b>", objectName="sectionTitle"))
+                content_lbl = QLabel(content, objectName="sectionContent")
+                content_lbl.setWordWrap(True)
+                self.content_layout.addWidget(content_lbl)
+            elif item_type == 'evidence':
+                evidence_text, benefit_text = content
+                self.content_layout.addWidget(QLabel("<b>الدليل:</b>", objectName="sectionTitle"))
+                
+                evidence_lbl = QLabel(evidence_text, objectName="sectionContent")
+                evidence_lbl.setWordWrap(True)
+                self.content_layout.addWidget(evidence_lbl)
+
+                benefit_title_lbl = QLabel("<em>الفائدة الروحية:</em>", objectName="sectionTitle")
+                benefit_title_lbl.setStyleSheet("margin-top: 10px; font-size: 16px;")
+                self.content_layout.addWidget(benefit_title_lbl)
+
+                benefit_lbl = QLabel(benefit_text, objectName="sectionContent")
+                benefit_lbl.setWordWrap(True)
+                self.content_layout.addWidget(benefit_lbl)
+
+    def update_ui_for_current_step(self):
+        """Updates the entire UI based on the current step index."""
+        is_final_step = self.current_step_index == len(STEPS)
+        
+        title, description = self.all_steps[self.current_step_index]
+
+        # Update text content
+        self.title_lbl.setText(title)
+        self.parse_and_display_step_content(description)
+        
+        # Update navigation controls visibility and state
+        self.prev_btn.setVisible(not is_final_step)
+        self.next_btn.setVisible(not is_final_step)
+        self.step_counter_lbl.setVisible(not is_final_step)
+        
+        if not is_final_step:
+            self.step_counter_lbl.setText(f"{self.current_step_index + 1} / {len(STEPS)}")
+            self.action_btn.setText("تم")
+        else:
+            # Configure for the final "Finished" screen
+            self.action_btn.setText("إغلاق")
+
+        # Enable/disable navigation buttons
+        self.prev_btn.setEnabled(self.current_step_index > 0)
+        self.next_btn.setEnabled(self.current_step_index < len(STEPS) - 1)
+        
+        self.play_sound()
+        
+        # --- Adjust window size to content ---
+        # Let the content widget determine its required height.
+        content_height = self.content_widget.sizeHint().height()
+        
+        # Set the scroll area's minimum height. Add a lower bound to avoid it becoming too small.
+        MIN_SCROLL_AREA_HEIGHT = 100
+        self.scroll_area.setMinimumHeight(max(content_height, MIN_SCROLL_AREA_HEIGHT))
+        
+        # Ask the window to resize to the new optimal size.
+        self.adjustSize()
+
+    def play_sound(self):
+        """Plays the completion sound if available."""
+        if self.sound_effect.isLoaded():
+            self.sound_effect.play()
+
+    def handle_action_button(self):
+        """
+        Handles the click of the main action button.
+        
+        It either proceeds to the next step or closes the application
+        if it's on the final step.
+        """
+        if self.current_step_index == len(STEPS):
             self.close()
+        else:
+            self.go_to_next_step()
 
-# ------------------------------------------------------------------
-# ❹ نقطة تشغيل مستقلة
-# ------------------------------------------------------------------
+    def go_to_next_step(self):
+        """Advances to the next step if not on the last one."""
+        if self.current_step_index < len(self.all_steps) - 1:
+            self.current_step_index += 1
+            self.update_ui_for_current_step()
+
+    def go_to_previous_step(self):
+        """Goes back to the previous step if not on the first one."""
+        if self.current_step_index > 0:
+            self.current_step_index -= 1
+            self.update_ui_for_current_step()
+
+
+# ==================================================================
+# ❸ Application Entry Point
+# ==================================================================
 def run():
+    """Initializes and runs the QApplication."""
     app = QApplication(sys.argv)
-    win = StepWindow()
-    win.show()
-    app.exec_()
+    # Set the application layout direction to Right-to-Left
+    app.setLayoutDirection(Qt.RightToLeft)
+    
+    # Set a default font that supports Arabic
+    font = QFont(FONT_FAMILY)
+    app.setFont(font)
 
-# تشغيل مستقل عند تشغيل الملف مباشرة
+    window = StepWindow()
+    window.show()
+    sys.exit(app.exec())
+
 if __name__ == "__main__":
+    # This allows the script to be run directly.
     run()

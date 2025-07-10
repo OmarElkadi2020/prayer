@@ -287,3 +287,25 @@ For users who prefer not to manage Python environments, you can create a single 
 
     The executable will be created in the `dist/` directory. You can then distribute this executable. Note that for background services, you would typically use `nssm` (Windows) or `launchd` (macOS) to run this executable.
 
+---
+
+## Uninstallation
+
+To remove the Prayer Player application and all related files, use the provided uninstall scripts. These scripts will stop any running background services, remove the service configurations, and delete the virtual environment and configuration files.
+
+*   **Linux:**
+    ```bash
+    ./uninstall_linux.sh
+    ```
+
+*   **Windows:**
+    Open PowerShell as Administrator and run:
+    ```powershell
+    .\uninstall_windows.ps1
+    ```
+
+*   **macOS:**
+    ```bash
+    ./uninstall_macos.sh
+    ```
+

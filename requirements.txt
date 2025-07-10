@@ -13,3 +13,6 @@ msgraph-sdk
 keyring
 tzlocal==5.3.1
 urllib3==2.4.0
+argcomplete==3.3.0
+PySide6
+playsound

@@ -25,7 +25,7 @@ def main(argv: list[str] | None = None):
         LOG.info("Calendar setup complete.")
         return
     
-    audio_cmd = args.audio if args.cmd else f"ffplay -nodisp -autoexit -loglevel quiet '{args.audio}'"
+    audio_cmd = args.audio # Now audio_cmd is just the path, as play() handles playback directly
 
     pray_sched = PrayerScheduler(audio_cmd)
 
@@ -39,13 +39,16 @@ def main(argv: list[str] | None = None):
         from datetime import datetime, timedelta, timezone as _tz
         t0 = datetime.now(tz=_tz.utc).astimezone(TZ) 
 
-        pray_sched.scheduler.add_job(focus_mode, "date", run_date=t0, id="focus-test")
-        pray_sched.scheduler.add_job(play, "date", run_date=t0, id="adhan-test", args=[audio_cmd])
-        pray_sched.scheduler.add_job(play, "date", run_date=t0 + timedelta(minutes=2, seconds=53), id="duaa-adhan-test", args=[f"ffplay -nodisp -autoexit -loglevel quiet '{duaa_path()}'"])
-        LOG.info("Dry-run focus at %s\", t.strftime('%H:%M:%S')")
+        LOG.info(f"Dry-run: Playing adhan at {t0.strftime('%H:%M:%S')}")
+        play(audio_cmd)
+        LOG.info(f"Dry-run: Playing duaa at {t0.strftime('%H:%M:%S')}")
+        play(duaa_path())
+        # If you want to test focus mode in dry-run, you can uncomment the line below
+        # focus_mode(disable_network=not args.no_net_off)
+        return # Exit after playing audio in dry-run
 
     if args.focus_now:        # خيار جديد
-        focus_mode()
+        focus_mode(disable_network=not args.no_net_off)
         return             # لا ندخل الجدول الزمني
 
     if not args.dry_run:

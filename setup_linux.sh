@@ -21,6 +21,35 @@ then
     exit 1
 fi
 
+# --- 1.5. Check for Tkinter (for GUI) and FFmpeg (for audio) ---
+echo "Checking for tkinter..."
+if ! python3 -c "import tkinter" &> /dev/null;
+then
+    echo "tkinter is not installed. Attempting to install python3-tk..."
+    sudo apt-get update
+    sudo apt-get install -y python3-tk
+    if ! python3 -c "import tkinter" &> /dev/null;
+    then
+        echo "Failed to install tkinter. Please install it manually using 'sudo apt-get install python3-tk' and try again."
+        exit 1
+    fi
+    echo "tkinter installed successfully."
+fi
+
+echo "Checking for ffmpeg (for audio playback)..."
+if ! command -v ffplay &> /dev/null
+then
+    echo "ffplay (from ffmpeg) is not installed. Attempting to install ffmpeg..."
+    sudo apt-get update
+    sudo apt-get install -y ffmpeg
+    if ! command -v ffplay &> /dev/null
+    then
+        echo "Failed to install ffmpeg. Please install it manually using 'sudo apt-get install ffmpeg' and try again."
+        exit 1
+    fi
+    echo "ffmpeg installed successfully."
+fi
+
 # --- 2. Create and activate virtual environment ---
 ENV_DIR="myenv"
 if [ ! -d "$ENV_DIR" ]; then
@@ -35,24 +64,37 @@ echo "Virtual environment activated."
 echo "Installing project dependencies..."
 pip install --upgrade pip
 pip install -e .
+pip install -r requirements.txt
 
-# --- 4. Get user configuration ---
-read -p "Enter your city (e.g., Deggendorf): " CITY
-read -p "Enter your country (e.g., Germany): " COUNTRY
+# --- 4. User Configuration via GUI ---
+echo "Launching the Prayer Player Setup GUI for configuration..."
+echo "Please enter your City and Country in the GUI and click 'Save Configuration'."
+echo "Also, click 'Authenticate Google Calendar' in the GUI to set up calendar integration."
+echo "After saving and authenticating, close the GUI to continue with the setup."
 
-# --- 5. Choose run mode ---
-echo "\nHow would you like to run Prayer Player?"
-echo "1) Run in background (as a systemd user service - recommended)"
-echo "2) Run in foreground (for testing or temporary use)"
-read -p "Enter your choice (1 or 2): " RUN_CHOICE
+# Launch the GUI and wait for it to close
+python3 "$PROJECT_ROOT"/setup_gui.py
 
-if [ "$RUN_CHOICE" == "1" ]; then
+echo "Configuration GUI closed. Continuing with service setup..."
+
+# --- 5. Apply run mode based on GUI configuration ---
+
+# Load the configuration saved by the GUI
+CONFIG_FILE="$PROJECT_ROOT/src/prayer/config/config.json"
+if [ -f "$CONFIG_FILE" ]; then
+    RUN_CHOICE=$(python3 -c "import json; f=open('$CONFIG_FILE'); config=json.load(f); f.close(); print(config.get('run_mode', 'background'))")
+else
+    echo "Warning: config.json not found. Defaulting to background service."
+    RUN_CHOICE="background"
+fi
+
+if [ "$RUN_CHOICE" == "background" ]; then
     echo "Setting up Prayer Player as a systemd user service..."
 
     # Create systemd user directory if it doesn't exist
     mkdir -p ~/.config/systemd/user/
 
-    SERVICE_FILE="~/.config/systemd/user/prayer-player.service"
+    SERVICE_FILE="$HOME/.config/systemd/user/prayer-player.service"
     EXECUTABLE="$PROJECT_ROOT/$ENV_DIR/bin/prayer-player"
 
     # Create the service file content
@@ -63,7 +105,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=$EXECUTABLE --city "$CITY" --country "$COUNTRY"
+ExecStart=$EXECUTABLE
 Restart=always
 StandardOutput=journal
 StandardError=journal
@@ -84,13 +126,15 @@ EOF
     echo "To view logs: journalctl --user -u prayer-player.service -f"
     echo "To enable running after logout: loginctl enable-linger $USER"
 
-elif [ "$RUN_CHOICE" == "2" ]; then
+elif [ "$RUN_CHOICE" == "foreground" ]; then
     echo "Running Prayer Player in the foreground..."
     echo "Press Ctrl+C to stop the application."
-    "$PROJECT_ROOT"/"$ENV_DIR"/bin/prayer-player --city "$CITY" --country "$COUNTRY"
+    "$PROJECT_ROOT"/"$ENV_DIR"/bin/prayer-player
 else
-    echo "Invalid choice. Please run the script again and choose 1 or 2."
-    exit 1
+    echo "Invalid run mode specified in config.json. Defaulting to foreground run."
+    echo "Running Prayer Player in the foreground..."
+    echo "Press Ctrl+C to stop the application."
+    "$PROJECT_ROOT"/"$ENV_DIR"/bin/prayer-player
 fi
 
 deactivate
