@@ -9,7 +9,7 @@ from typing import Set
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 
-from config import TZ, LOG, NET_OFF_CMD, NET_ON_CMD, FOCUS_DELAY, FOCUS_LENGTH
+from .config import TZ, LOG, NET_OFF_CMD, NET_ON_CMD, FOCUS_DELAY, FOCUS_LENGTH
 
 KEEP_PIDS: Set[int] = {os.getpid(), os.getppid()}
 

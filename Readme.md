@@ -1,182 +1,162 @@
-Absolutely! Here is your documentation in **Markdown** format, suitable for a README or wiki page.
+# Prayer Player
+
+Prayer Player is a Python application that automatically plays the Adhan (Islamic call to prayer) at the correct times. It fetches prayer times from an online API, schedules the Adhan playback, and can even integrate with your desktop calendar to block out busy slots.
+
+It is designed to run as a background service on Linux desktops (specifically tested on Ubuntu 22.04 with GNOME).
+
+## Features
+
+-   **Automatic Prayer Times:** Fetches daily prayer times for any city using the aladhan.com API.
+-   **Scheduling:** Uses `APScheduler` to reliably schedule the Adhan and other actions.
+-   **Audio Playback:** Plays the Adhan audio file at the scheduled times.
+-   **Calendar Integration:** (Optional) Can connect to the GNOME Evolution calendar to find free time slots and create busy events for prayers.
+-   **Focus Mode:** Includes a "focus mode" that can be triggered around prayer times to minimize distractions.
+-   **Systemd Service:** Designed to be run as a systemd user service for automatic startup.
 
 ---
 
-````markdown
-# How to Run the Adhan Script as a Background Service on Ubuntu 22.04
+## Installation and Setup
 
-This guide shows you how to convert your Python adhan scheduler into a background service that runs automatically at login using a systemd **user service**. This is ideal for desktop applications that interact with your calendar, audio, or GUI.
+### 1. Prepare Your Environment
 
----
+-   Clone this repository.
+-   Create a virtual environment and activate it:
 
-## 1. Prepare Your Environment
+    ```bash
+    python3 -m venv myenv
+    source myenv/bin/activate
+    ```
 
-- Place your Python scripts in a folder, e.g. `prayer`
-- Create a virtual environment and install dependencies:
+-   Install the project in editable mode. This will install all dependencies and make the `prayer-player` command available in your shell.
+
+    ```bash
+    pip install --upgrade pip
+    pip install -e .
+    ```
+
+### 2. Test the Script Manually
+
+Before creating a service, test the application from your terminal to ensure it's working correctly.
 
 ```bash
-python3 -m venv myenv
-source myenv/bin/activate
-pip install --upgrade pip
-pip install requests intervaltree apscheduler
-````
-
----
-
-## 2. Test the Script Manually
-
-Before creating the service, make sure your script works from the terminal:
-
-```bash
-myenv/bin/python3 /src/adhan_player.py --city Deggendorf --country Germany --audio adhan.mp3 --log-level INFO
+prayer-player --city "Your City" --country "Your Country"
 ```
 
 ---
 
-## 3. Create a systemd User Service File
+## Configuration
 
-1. Create the user systemd directory if needed:
+You can configure the application using command-line arguments.
 
-   ```bash
-   mkdir -p ~/.config/systemd/user/
-   ```
+| Argument      | Description                                                                                             | Default       | Example                               |
+| :------------ | :------------------------------------------------------------------------------------------------------ | :------------ | :------------------------------------ |
+| `--city`      | The city for which to fetch prayer times.                                                               | `Deggendorf`  | `--city "Cairo"`                      |
+| `--country`   | The country for the city.                                                                               | `Germany`     | `--country "Egypt"`                   |
+| `--method`    | The calculation method for prayer times. See [Aladhan API Docs](https://aladhan.com/prayer-times-api#GetTimingsByCity) for details. | `3`           | `--method 5`                          |
+| `--school`    | The school of thought for Asr prayer (0 for Shafi'i, Maliki, Hanbali; 1 for Hanafi).                     | `0`           | `--school 1`                          |
+| `--audio`     | The path to the Adhan audio file.                                                                       | (Internal)    | `--audio "/path/to/my/adhan.mp3"`     |
+| `--cmd`       | If set, treats the `--audio` argument as a shell command instead of a file path.                        | `False`       | `--cmd --audio "aplay /path/to/adhan.wav"` |
+| `--dry-run`   | Schedules jobs but does not run the scheduler. Useful for testing.                                      | `False`       | `--dry-run`                           |
+| `--log-level` | Sets the logging level.                                                                                 | `INFO`        | `--log-level DEBUG`                   |
+| `--focus-now` | Runs the focus mode immediately and then exits.                                                         | `False`       | `--focus-now`                         |
+| `--setup-calendar` | Runs the interactive calendar setup and then exits.                                                 | `False`       | `--setup-calendar`                    |
 
-2. Create and edit the service file:
+## Calendar Integration
 
-   ```bash
-   nano ~/.config/systemd/user/adhan-player.service
-   ```
+The application can integrate with your Google or Microsoft calendar to automatically find available slots for prayers and create events.
 
-3. Paste and adjust this content:
+### Setup
 
-   ```ini
-   [Unit]
-   Description=Adhan Player Prayer Scheduler
-
-   [Service]
-   Type=simple
-   ExecStart=myenv/bin/python3 /src/adhan_player.py --city Deggendorf --country Germany --audio adhan.mp3 --log-level INFO
-   Restart=always
-
-   [Install]
-   WantedBy=default.target
-   ```
+1.  **Choose your provider:** Decide whether you want to use Google Calendar or Microsoft Calendar.
+2.  **Obtain Credentials:**
+    *   **Google Calendar:**
+        1.  Go to the [Google Cloud Console](https://console.cloud.google.com/).
+        2.  Create a new project.
+        3.  Enable the "Google Calendar API".
+        4.  Create credentials for a "Desktop app".
+        5.  Download the `credentials.json` file and place it in the root of the project directory.
+    *   **Microsoft Calendar:**
+        1.  Go to the [Azure Active Directory admin center](https://aad.portal.azure.com/).
+        2.  Create a new application registration.
+        3.  Under "Authentication", add a new platform for "Mobile and desktop applications" and add the redirect URI `http://localhost`.
+        4.  Get the "Application (client) ID" from the overview page and replace the placeholder value in `src/prayer/calendar_api/microsoft_calendar.py`.
+3.  **Run the setup command:**
+    ```bash
+    prayer-player --setup-calendar
+    ```
+    This will open a browser window and ask you to authorize the application.
 
 ---
 
-## 4. Enable and Start the Service
+## Running as a Background Service (systemd)
+
+### 1. Create a systemd User Service File
+
+1.  Create the user systemd directory if it doesn't exist:
+
+    ```bash
+    mkdir -p ~/.config/systemd/user/
+    ```
+
+2.  Create and edit the service file:
+
+    ```bash
+    nano ~/.config/systemd/user/prayer-player.service
+    ```
+
+3.  Paste and adjust the following content.
+    **Important:**
+    -   Replace `/home/user/prayer/myenv/bin/prayer-player` with the **absolute path** to the `prayer-player` executable inside your virtual environment.
+    -   Update the `--city` and `--country` arguments to your location.
+
+    ```ini
+    [Unit]
+    Description=Prayer Player Scheduler
+
+    [Service]
+    Type=simple
+    ExecStart=/home/user/prayer/myenv/bin/prayer-player --city "Cairo" --country "Egypt"
+    Restart=always
+
+    [Install]
+    WantedBy=default.target
+    ```
+
+### 2. Enable and Start the Service
 
 Reload and enable your user service:
 
 ```bash
 systemctl --user daemon-reload
-systemctl --user enable --now adhan-player.service
+systemctl --user enable --now prayer-player.service
 ```
 
-If you want the service to run even when not logged in to the GUI:
+If you want the service to run even when you are not logged in, enable linger for your user:
 
 ```bash
 loginctl enable-linger $USER
 ```
 
----
+### 3. Check Service Status and Logs
 
-## 5. Check Service Status and Logs
-
-Check if it’s running and view logs:
+Check if the service is running and view its logs:
 
 ```bash
-systemctl --user status adhan-player.service
-journalctl --user -u adhan-player.service -f
+systemctl --user status prayer-player.service
+journalctl --user -u prayer-player.service -f
 ```
 
----
+### 4. Managing the Service
 
-## 6. Apply Code Changes
-
-After editing your code, **restart the service** to apply updates:
-
-```bash
-systemctl --user restart adhan-player.service
-```
-
-If you change the `.service` file:
-
-```bash
-systemctl --user daemon-reload
-systemctl --user restart adhan-player.service
-```
-
----
-
-## 7. Stop or Disable the Service
-
-To stop:
-
-```bash
-systemctl --user stop adhan-player.service
-```
-
-To disable from autostart:
-
-```bash
-systemctl --user disable adhan-player.service
-```
-
----
-
-## 8. Common Troubleshooting Commands
-
-* View last 50 log lines:
-
-  ```bash
-  journalctl --user -u adhan-player.service -n 50 --no-pager
-  ```
-* List all running user services:
-
-  ```bash
-  systemctl --user list-units --type=service
-  ```
-
----
-
-## 9. Environment Notes
-
-No need to set `DISPLAY` or `DBUS_SESSION_BUS_ADDRESS` manually; user services inherit your desktop session automatically.
-
----
-
-## **Summary of Commands Used**
-
-```bash
-# Create virtualenv and install dependencies
-python3 -m venv myenv
-source myenv/bin/activate
-pip install --upgrade pip
-pip install requests intervaltree apscheduler
-
-# Create user service file
-mkdir -p ~/.config/systemd/user/
-nano ~/.config/systemd/user/adhan-player.service
-
-# Reload, enable and start service
-systemctl --user daemon-reload
-systemctl --user enable --now adhan-player.service
-
-# (Optional) Enable linger for running after logout
-loginctl enable-linger $USER
-
-# Check status and logs
-systemctl --user status adhan-player.service
-journalctl --user -u adhan-player.service -f
-
-# Restart after code changes
-systemctl --user restart adhan-player.service
-```
-
----
-
-**Congratulations!**
-Your adhan scheduler now runs automatically, restarts after reboots and login, and picks up new changes with a simple restart.
-
----
+-   **Restart after code changes:** If you modify the Python code, restart the service to apply the updates:
+    ```bash
+    systemctl --user restart prayer-player.service
+    ```
+-   **Stop the service:**
+    ```bash
+    systemctl --user stop prayer-player.service
+    ```
+-   **Disable automatic startup:**
+    ```bash
+    systemctl --user disable prayer-player.service
+    ```

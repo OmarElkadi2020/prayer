@@ -5,14 +5,26 @@
 
 from __future__ import annotations
 import sys
+from importlib import resources
 
-from config import parse_args, LOG, TZ
-from scheduler import PrayerScheduler
-from actions import focus_mode, play
+from .config import parse_args, LOG, TZ
+from .scheduler import PrayerScheduler
+from .actions import focus_mode, play
 
+def duaa_path():
+    with resources.path('prayer.assets', 'duaa_after_adhan.wav') as p:
+        return str(p)
 
 def main(argv: list[str] | None = None):
     args = parse_args(argv)
+    if args.setup_calendar:
+        from prayer.auth.auth_manager import AuthManager
+        auth_manager = AuthManager()
+        auth_manager.setup_google_credentials(reauthenticate=args.reauthenticate_gcal)
+        
+        LOG.info("Calendar setup complete.")
+        return
+    
     audio_cmd = args.audio if args.cmd else f"ffplay -nodisp -autoexit -loglevel quiet '{args.audio}'"
 
     pray_sched = PrayerScheduler(audio_cmd)
@@ -29,18 +41,18 @@ def main(argv: list[str] | None = None):
 
         pray_sched.scheduler.add_job(focus_mode, "date", run_date=t0, id="focus-test")
         pray_sched.scheduler.add_job(play, "date", run_date=t0, id="adhan-test", args=[audio_cmd])
-        pray_sched.scheduler.add_job(play, "date", run_date=t0 + timedelta(minutes=2, seconds=53), id="duaa-adhan-test", args=[f"ffplay -nodisp -autoexit -loglevel quiet 'duaa_after_adhan.wav'"])
+        pray_sched.scheduler.add_job(play, "date", run_date=t0 + timedelta(minutes=2, seconds=53), id="duaa-adhan-test", args=[f"ffplay -nodisp -autoexit -loglevel quiet '{duaa_path()}'"])
         LOG.info("Dry-run focus at %s\", t.strftime('%H:%M:%S')")
 
     if args.focus_now:        # خيار جديد
         focus_mode()
         return             # لا ندخل الجدول الزمني
 
-
-    try:
-        pray_sched.run()
-    except (KeyboardInterrupt, SystemExit):
-        LOG.info("Exit.")
+    if not args.dry_run:
+        try:
+            pray_sched.run()
+        except (KeyboardInterrupt, SystemExit):
+            LOG.info("Exit.")
 
 
 if __name__ == "__main__":

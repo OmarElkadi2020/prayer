@@ -7,7 +7,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from config import TZ, API_URL, LOG
+from .config import TZ, API_URL, LOG
 
 # ---- Persistent cache setup ----
 CACHE_DIR = Path.home() / ".cache" / "prayer_times"
@@ -79,7 +79,7 @@ def _fetch_raw(today: date, city: str, country: str, method: int, school: int) -
             LOG.info("Loaded prayer times from cache for %s", cache_key)
             return _disk_cache[cache_key]
         LOG.error("No cached data for %s", cache_key)
-        raise
+        raise e
 
 
 def today_times(city: str, country: str, method: int, school: int) -> dict[str, datetime]:
@@ -87,7 +87,11 @@ def today_times(city: str, country: str, method: int, school: int) -> dict[str, 
     Return today's prayer times as datetimes, caching and retrying as needed, and persist latest times.
     """
     today = datetime.now(TZ).date()
-    raw = _fetch_raw(today, city, country, method, school)
+    try:
+        raw = _fetch_raw(today, city, country, method, school)
+    except requests.RequestException as e:
+        LOG.error("Failed to fetch prayer times for %s, %s", city, today)
+        raise e
 
     out: dict[str, datetime] = {}
     latest: dict[str, str] = _load_json(LATEST_FILE)
