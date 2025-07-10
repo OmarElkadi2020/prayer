@@ -15,7 +15,33 @@ It is designed to run as a background service on Linux desktops (specifically te
 
 ---
 
-## Installation and Setup
+## Quick Setup (Recommended)
+
+To get Prayer Player up and running quickly on your system, use the provided platform-specific setup scripts:
+
+*   **Linux:**
+    ```bash
+    ./setup_linux.sh
+    ```
+
+*   **Windows:**
+    Open PowerShell as Administrator and run:
+    ```powershell
+    .\setup_windows.ps1
+    ```
+
+*   **macOS:**
+    ```bash
+    ./setup_macos.sh
+    ```
+
+These scripts will guide you through setting up the Python environment, installing dependencies, and configuring Prayer Player to run in the background or foreground.
+
+---
+
+## Installation and Setup (Manual)
+
+If you prefer a manual setup or need to troubleshoot, follow these steps:
 
 ### 1. Prepare Your Environment
 
