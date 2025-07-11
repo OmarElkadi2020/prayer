@@ -110,7 +110,7 @@ The application can integrate with your Google or Microsoft calendar to automati
     ```bash
     prayer-player --setup-calendar
     ```
-    This will open a browser window and ask you to authorize the application.
+    This will open a browser window and ask you to authorize the application. After running this command, ensure you successfully complete the authentication flow in your browser. A successful authentication will typically redirect you to a localhost page with a success message.
 
 ---
 
