@@ -3,62 +3,30 @@
 # ---------------------------------------------------------------------------
 
 from __future__ import annotations
-import subprocess, sys, os
+import sys, os
 from datetime import datetime, timedelta
 from typing import Set
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from playsound import playsound
 
-from .config import TZ, LOG, NET_OFF_CMD, NET_ON_CMD, FOCUS_DELAY, FOCUS_LENGTH
-
-KEEP_PIDS: Set[int] = {os.getpid(), os.getppid()}
-
-
-# -- utility --------------------------------------------------------------
-
-def _safe_close():
-    try:
-        out = subprocess.check_output(["wmctrl", "-l", "-p"], text=True, timeout=2)
-    except FileNotFoundError:
-        LOG.warning("wmctrl missing – cannot close windows")
-        return
-    keep = {ln.split()[0] for ln in out.splitlines() if int(ln.split()[2]) in KEEP_PIDS or ln.endswith("تهيئة الخشوع")}
-    for ln in out.splitlines():
-        wid = ln.split()[0]
-        if wid not in keep:
-            subprocess.call(["wmctrl", "-ic", wid])
+from .config import TZ, LOG, FOCUS_DELAY, FOCUS_LENGTH
+from .focus_steps import run as run_focus_steps_window
 
 
 # -- focus mode -----------------------------------------------------------
 
-import os
 def focus_mode(disable_network: bool = True):
-    LOG.info("🕌 Focus‑mode ON")
-    
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    focus_script = os.path.join(script_dir, "focus_steps.py")  # أو المسار المناسب
-    env = os.environ.copy()
-    # ✦ أضف <DISPLAY و/أو Wayland إذا كانت مفقودة
-    if "WAYLAND_DISPLAY" in env:                # تعمل على Wayland
-        env.setdefault("QT_QPA_PLATFORM", "wayland")
-    else:                                       # غالبًا X11
-        env.setdefault("DISPLAY", ":0")
-        env.setdefault("QT_QPA_PLATFORM", "xcb")
+    LOG.info("🕌 Focus‑mode ON.")
+    # The network control functionality was removed for platform independence.
+    # The focus steps window is now launched directly.
+    run_focus_steps_window()
 
-    env["PYTHONPATH"] = script_dir + (":" + env.get("PYTHONPATH", ""))
-    subprocess.Popen(
-        [sys.executable, focus_script],
-        cwd=script_dir,
-        env=env
-    )
-    if disable_network:
-        subprocess.call(NET_OFF_CMD, shell=True)
-    # _safe_close()
-    resume = datetime.now(TZ) + FOCUS_LENGTH
-    tmp_scheduler = BlockingScheduler(timezone=TZ)
-    tmp_scheduler.add_job(lambda: (subprocess.call(NET_ON_CMD, shell=True), LOG.info("🌐 Net back")), "date", run_date=resume)
-    tmp_scheduler.start(paused=False)
+    # The scheduler part below is for network control, which is currently removed.
+    # resume = datetime.now(TZ) + FOCUS_LENGTH
+    # tmp_scheduler = BlockingScheduler(timezone=TZ)
+    # tmp_scheduler.add_job(lambda: LOG.info("🌐 Network control functionality removed for platform independence."), "date", run_date=resume)
+    # tmp_scheduler.start(paused=False)
 
 # -- audio playback ---
 

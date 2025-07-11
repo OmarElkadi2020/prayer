@@ -12,7 +12,6 @@ def test_parse_args_defaults():
     assert ns.school == 0
     assert ns.log_level == "INFO"
     assert not ns.dry_run
-    assert not ns.cmd
     assert not ns.focus_now
 
 def test_parse_args_custom():
@@ -24,9 +23,8 @@ def test_parse_args_custom():
         "--school", "1",
         "--log-level", "DEBUG",
         "--dry-run",
-        "--cmd",
-        "--focus-now"
-    ]
+            "--focus-now"
+        ]
     ns = parse_args(argv)
     assert ns.city == "Cairo"
     assert ns.country == "Egypt"
@@ -34,5 +32,4 @@ def test_parse_args_custom():
     assert ns.school == 1
     assert ns.log_level == "DEBUG"
     assert ns.dry_run
-    assert ns.cmd
     assert ns.focus_now

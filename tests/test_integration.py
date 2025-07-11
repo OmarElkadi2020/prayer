@@ -26,10 +26,13 @@ def mock_calendar_utils(mocker):
 
 def test_dry_run_integration(mock_prayer_times, mock_calendar_utils, mocker):
     """Test the main application in --dry-run mode."""
-    # Mock the scheduler's run method to prevent it from blocking
-    mock_run = mocker.patch("apscheduler.schedulers.blocking.BlockingScheduler.start")
+    # Mock focus_mode to prevent it from starting its internal scheduler
+    mock_focus_mode = mocker.patch("prayer.__main__.focus_mode")
+    
+    # Mock the main scheduler's run method to prevent it from blocking
+    mock_main_scheduler_run = mocker.patch("prayer.scheduler.PrayerScheduler.run")
     
     main(["--dry-run"])
 
-    # The dry run should not block
-    mock_run.assert_not_called()
+    # The main scheduler should be started in dry-run mode
+    mock_main_scheduler_run.assert_called_once()

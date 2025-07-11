@@ -107,12 +107,13 @@ class StepWindow(QWidget):
     The main window for the application. It displays steps sequentially
     and handles user navigation. The window resizes to fit its content.
     """
-    def __init__(self):
+    def __init__(self, initial_step_index: int = 0, disable_sound: bool = False):
         super().__init__()
         
         # --- State Management ---
-        self.current_step_index = 0
+        self.current_step_index = initial_step_index
         self.all_steps = STEPS + [("انتهيت", "تقبّل الله طاعتك.")]
+        self.disable_sound = disable_sound
 
         # --- Window Configuration ---
         self.setWindowTitle(APP_TITLE)
@@ -367,7 +368,8 @@ class StepWindow(QWidget):
 
     def play_sound(self):
         """Plays the completion sound if available."""
-        if self.sound_effect.isLoaded():
+        # Ensure SOUND_PATH is valid and the sound effect is loaded before playing.
+        if SOUND_PATH and self.sound_effect.isLoaded():
             self.sound_effect.play()
 
     def handle_action_button(self):
@@ -384,7 +386,7 @@ class StepWindow(QWidget):
 
     def go_to_next_step(self):
         """Advances to the next step if not on the last one."""
-        if self.current_step_index < len(self.all_steps) - 1:
+        if self.current_step_index < len(STEPS):
             self.current_step_index += 1
             self.update_ui_for_current_step()
 

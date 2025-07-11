@@ -1,122 +1,255 @@
 from __future__ import annotations
-import datetime as dt
-from datetime import timedelta
-from zoneinfo import ZoneInfo
 
-from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel, QTableWidget, QTableWidgetItem, QHeaderView
-from PySide6.QtCore import QTimer, Qt
+import os
+import sys
+import requests
+import threading
+import json
 
-from src.prayer.prayer_times import today_times
-from src.prayer.config import TZ
+from PySide6.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
+    QLabel, QComboBox, QPushButton, QLineEdit, QRadioButton, QButtonGroup, QMessageBox
+)
+from PySide6.QtCore import Signal, QObject, Qt, QTimer
+from PySide6.QtGui import QStandardItemModel, QStandardItem
 
-CITY = "Deggendorf"
-COUNTRY = "Germany"
-METHOD = 3
-SCHOOL = 0
+# Add the project root to the Python path
+# Assuming this script is in the project root
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, PROJECT_ROOT)
 
+from src.prayer import config
+from src.prayer.auth import google_auth
 
+class Worker(QObject):
+    """Worker object for running tasks in a separate thread."""
+    finished = Signal()
+    error = Signal(str)
+    countries_loaded = Signal(list)
+    cities_loaded = Signal(list, str)
+    status_updated = Signal(str, str)
 
-class AdhanWindow(QMainWindow):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+    def _fetch_data(self, url, params=None):
+        try:
+            response = requests.post(url, json=params) if params else requests.get(url)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            self.status_updated.emit(f"API Error: {e}", "red")
+            self.error.emit(f"Failed to fetch data: {e}")
+            return None
+
+    def load_countries(self):
+        self.status_updated.emit("Loading countries...", "blue")
+        data = self._fetch_data("https://countriesnow.space/api/v0.1/countries")
+        if data and not data.get("error"):
+            countries = sorted([country["country"] for country in data["data"]])
+            self.countries_loaded.emit(countries)
+            self.status_updated.emit("Countries loaded. Please select a country.", "green")
+        else:
+            self.status_updated.emit("Failed to load countries.", "red")
+        self.finished.emit()
+
+    def load_cities(self, country):
+        self.status_updated.emit(f"Loading cities for {country}...", "blue")
+        data = self._fetch_data("https://countriesnow.space/api/v0.1/countries/cities", {"country": country})
+        if data and not data.get("error"):
+            cities = sorted(data["data"])
+            self.cities_loaded.emit(cities, country)
+            self.status_updated.emit(f"Cities for {country} loaded.", "green")
+        else:
+            self.status_updated.emit(f"Failed to load cities for {country}.", "red")
+        self.finished.emit()
+
+    def authenticate_google_calendar(self):
+        self.status_updated.emit("Attempting Google Calendar authentication...", "blue")
+        try:
+            google_auth.get_google_credentials(reauthenticate=True)
+            self.status_updated.emit("Google Calendar authentication successful!", "green")
+        except Exception as e:
+            self.status_updated.emit(f"Google Calendar authentication failed: {e}", "red")
+            self.error.emit(f"Failed to authenticate Google Calendar: {e}")
+        self.finished.emit()
+
+class SetupGUI(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Prayer Times – مواقيت الصلاة")
-        self.setFixedSize(300, 400) # Adjust size as needed
+        self.setWindowTitle("Prayer Player Setup")
+        self.setFixedSize(450, 400) # Fixed size for simplicity, adjust as needed
 
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        layout = QVBoxLayout(central_widget)
-        layout.setAlignment(Qt.AlignCenter)
+        self.countries = []
+        self.cities = []
 
-        # Header
-        self.title_lbl = QLabel("")
-        self.title_lbl.setStyleSheet("font-size: 16pt; font-weight: bold;")
-        self.title_lbl.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.title_lbl)
+        self.init_ui()
+        self.load_initial_config()
+        self.load_countries()
 
-        # Prayer Times Table
-        self.table = QTableWidget()
-        self.table.setColumnCount(2)
-        self.table.setHorizontalHeaderLabels(["Prayer", "Time"])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.table.setRowCount(7) # Assuming 7 prayers
-        layout.addWidget(self.table)
+    def init_ui(self):
+        layout = QGridLayout()
+        self.setLayout(layout)
 
-        # Countdown
-        self.next_lbl = QLabel("")
-        self.next_lbl.setStyleSheet("font-size: 14pt;")
-        self.next_lbl.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.next_lbl)
+        # Country Selection
+        layout.addWidget(QLabel("Country:"), 0, 0)
+        self.country_combo = QComboBox()
+        self.country_combo.setEditable(True)
+        self.country_combo.currentIndexChanged.connect(self.on_country_select)
+        self.country_combo.lineEdit().textEdited.connect(self.filter_country_dropdown)
+        layout.addWidget(self.country_combo, 0, 1)
 
-        # Set up timers
-        self.refresh_timer = QTimer(self)
-        self.refresh_timer.timeout.connect(self.refresh_times)
-        # This will be set dynamically in refresh_times
+        # City Selection
+        layout.addWidget(QLabel("City:"), 1, 0)
+        self.city_combo = QComboBox()
+        self.city_combo.setEditable(True)
+        self.city_combo.setEnabled(False) # Disable until country is selected
+        self.city_combo.lineEdit().textEdited.connect(self.filter_city_dropdown)
+        layout.addWidget(self.city_combo, 1, 1)
 
-        self.clock_timer = QTimer(self)
-        self.clock_timer.timeout.connect(self.update_clock)
-        self.clock_timer.start(1000) # Update every second
+        # Save Button
+        self.save_button = QPushButton("Save Configuration")
+        self.save_button.clicked.connect(self.save_configuration)
+        layout.addWidget(self.save_button, 2, 0, 1, 2) # Span two columns
 
-        self.refresh_times()
-        self.update_clock()
+        # Google Calendar Authentication
+        layout.addWidget(QLabel("Google Calendar Setup:"), 3, 0)
+        self.auth_button = QPushButton("Authenticate Google Calendar")
+        self.auth_button.clicked.connect(self.authenticate_google_calendar)
+        layout.addWidget(self.auth_button, 3, 1)
 
-    def refresh_times(self):
-        self.today = dt.datetime.now(TZ).date()
-        self.times = today_times(
-            CITY, COUNTRY, METHOD, SCHOOL
-        )
+        # Status Label
+        self.status_label = QLabel("")
+        self.status_label.setStyleSheet("color: blue;")
+        layout.addWidget(self.status_label, 4, 0, 1, 2)
 
-        # Populate the table
-        self.table.setRowCount(0) # Clear existing rows
-        for row, (prayer, at) in enumerate(self.times.items()):
-            self.table.insertRow(row)
-            self.table.setItem(row, 0, QTableWidgetItem(prayer))
-            self.table.setItem(row, 1, QTableWidgetItem(at.strftime("%H:%M")))
+        # Run Mode Selection
+        layout.addWidget(QLabel("Run Mode:"), 5, 0)
+        run_mode_layout = QVBoxLayout()
+        self.run_mode_group = QButtonGroup(self)
 
-        self.title_lbl.setText(f"{CITY} – {self.today.isoformat()}")
+        self.background_radio = QRadioButton("Run in background (recommended)")
+        self.background_radio.setChecked(True) # Default
+        self.run_mode_group.addButton(self.background_radio)
+        run_mode_layout.addWidget(self.background_radio)
 
-        self.compute_next()
+        self.foreground_radio = QRadioButton("Run in foreground (for testing)")
+        self.run_mode_group.addButton(self.foreground_radio)
+        run_mode_layout.addWidget(self.foreground_radio)
 
-        # Schedule next refresh
-        now = dt.datetime.now(TZ)
-        tomorrow = (now + timedelta(days=1)).replace(hour=0, minute=0, second=10)
-        delay_ms = int((tomorrow - now).total_seconds() * 1000)
-        self.refresh_timer.stop() # Stop any previous timer
-        self.refresh_timer.start(delay_ms)
+        layout.addLayout(run_mode_layout, 5, 1, 2, 1) # Span two rows, one column
 
-    def compute_next(self):
-        now = dt.datetime.now(TZ)
-        future = {p: t for p, t in self.times.items() if t > now}
-        if not future:
-            # All prayers for today are over; next is Fajr of tomorrow
-            next_prayer = "Fajr"
-            tmrw = now + timedelta(days=1)
-            next_time = today_times(
-                CITY, COUNTRY, METHOD, SCHOOL
-            )[next_prayer]
+        # Finish Button
+        self.finish_button = QPushButton("Finish Setup")
+        self.finish_button.clicked.connect(self.finish_setup)
+        layout.addWidget(self.finish_button, 7, 0, 1, 2)
+
+        # Adjust column stretch to make the second column expand
+        layout.setColumnStretch(1, 1)
+
+    def update_status(self, message: str, color: str = "blue"):
+        self.status_label.setText(message)
+        self.status_label.setStyleSheet(f"color: {color};")
+
+    def load_initial_config(self):
+        current_config = config.load_config()
+        self.country_combo.setEditText(current_config.get('country', ''))
+        self.city_combo.setEditText(current_config.get('city', ''))
+        if current_config.get('run_mode', 'background') == "foreground":
+            self.foreground_radio.setChecked(True)
         else:
-            next_prayer, next_time = min(future.items(), key=lambda kv: kv[1])
-        self.next_prayer = next_prayer
-        self.next_time = next_time
+            self.background_radio.setChecked(True)
+        self.update_status("Configuration loaded.")
 
-    def update_clock(self):
-        now = dt.datetime.now(TZ)
-        remaining = self.next_time - now
-        if remaining.total_seconds() <= 0:
-            self.compute_next()
-            remaining = self.next_time - now
+    def load_countries(self):
+        self.worker = Worker()
+        self.thread = threading.Thread(target=self.worker.load_countries, daemon=True)
+        self.worker.countries_loaded.connect(self._on_countries_loaded)
+        self.worker.status_updated.connect(self.update_status)
+        self.worker.error.connect(lambda msg: QMessageBox.showerror("API Error", msg))
+        self.thread.start()
 
-        hh, mm = divmod(int(remaining.total_seconds()), 3600)
-        mm, ss = divmod(mm, 60)
-        self.next_lbl.setText(f"Next: {self.next_prayer} in {hh:02d}:{mm:02d}:{ss:02d}")
+    def _on_countries_loaded(self, countries):
+        self.countries = countries
+        self.country_combo.clear()
+        self.country_combo.addItems(self.countries)
+        self.country_combo.setEnabled(True)
+        # If a country was loaded from config, trigger city loading
+        if self.country_combo.currentText() in self.countries:
+            self.on_country_select()
 
+    def filter_country_dropdown(self, text):
+        self.country_combo.clear()
+        filtered_countries = [c for c in self.countries if text.lower() in c.lower()]
+        self.country_combo.addItems(filtered_countries)
+        self.country_combo.setEditText(text) # Keep the typed text
+        self.country_combo.showPopup() # Show dropdown immediately
+
+    def on_country_select(self):
+        selected_country = self.country_combo.currentText()
+        self.city_combo.clear()
+        self.city_combo.setEnabled(False)
+        if selected_country:
+            self.worker = Worker()
+            self.thread = threading.Thread(target=self.worker.load_cities, args=(selected_country,), daemon=True)
+            self.worker.cities_loaded.connect(self._on_cities_loaded)
+            self.worker.status_updated.connect(self.update_status)
+            self.worker.error.connect(lambda msg: QMessageBox.showerror("API Error", msg))
+            self.thread.start()
+
+    def _on_cities_loaded(self, cities, country):
+        self.cities = cities
+        self.city_combo.clear()
+        self.city_combo.addItems(self.cities)
+        self.city_combo.setEnabled(True)
+        # Set city from config if available
+        current_config = config.load_config()
+        if current_config.get('country') == country and current_config.get('city') in self.cities:
+            self.city_combo.setEditText(current_config.get('city'))
+
+    def filter_city_dropdown(self, text):
+        self.city_combo.clear()
+        filtered_cities = [c for c in self.cities if text.lower() in c.lower()]
+        self.city_combo.addItems(filtered_cities)
+        self.city_combo.setEditText(text) # Keep the typed text
+        self.city_combo.showPopup() # Show dropdown immediately
+
+    def save_configuration(self):
+        city = self.city_combo.currentText().strip()
+        country = self.country_combo.currentText().strip()
+        run_mode = "background" if self.background_radio.isChecked() else "foreground"
+
+        if not city or not country:
+            QMessageBox.warning(self, "Input Error", "Country and City must be selected.")
+            return
+
+        try:
+            config.save_config(city, country, run_mode)
+            self.update_status("Configuration saved successfully!", "green")
+        except Exception as e:
+            self.update_status(f"Error saving config: {e}", "red")
+            QMessageBox.showerror(self, "Save Error", f"Failed to save configuration: {e}")
+
+    def authenticate_google_calendar(self):
+        self.worker = Worker()
+        self.thread = threading.Thread(target=self.worker.authenticate_google_calendar, daemon=True)
+        self.worker.status_updated.connect(self.update_status)
+        self.worker.error.connect(lambda msg: QMessageBox.showerror("Authentication Error", msg))
+        self.thread.start()
+
+    def finish_setup(self):
+        self.save_configuration()
+        if "successfully" in self.status_label.text():
+            QMessageBox.information(self, "Setup Complete", "Configuration saved. You can now close this window.")
+            self.close()
+        else:
+            QMessageBox.warning(self, "Setup Incomplete", "Please save the configuration before finishing.")
 
 def main():
-    app = QApplication([])
-    window = AdhanWindow()
-    window.show()
-    app.exec()
-
+    app = QApplication(sys.argv)
+    gui = SetupGUI()
+    gui.show()
+    sys.exit(app.exec())
 
 if __name__ == "__main__":
     main()

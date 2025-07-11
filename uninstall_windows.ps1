@@ -7,46 +7,17 @@ $ErrorActionPreference = "Stop"
 $PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition
 Set-Location $PSScriptRoot
 
-# --- Function to check for Admin privileges ---
-function Test-Admin {
-    $currentUser = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
-    $currentUser.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-}
+Write-Host "`nPrayer Player Uninstallation for Windows`n"
 
-# --- Relaunch as Admin if necessary ---
-if (-not (Test-Admin)) {
-    Write-Warning "Administrative privileges are required to remove the Windows Service."
-    Write-Host "Attempting to restart script with elevated privileges..."
-    Start-Process powershell -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$($MyInvocation.MyCommand.Definition)`""
-    exit
-}
+# --- 1. Stop and remove the Scheduled Task ---
+$taskName = "PrayerPlayerScheduler"
 
-Write-Host "Running with administrative privileges."
-Write-Host "Prayer Player Uninstallation for Windows"
-
-# --- 1. Stop and remove the Windows Service ---
-$envDir = "myenv"
-$venvPython = Join-Path $PSScriptRoot $envDir "Scripts\python.exe"
-$serviceScript = Join-Path $PSScriptRoot "src\prayer\windows_service.py"
-
-if (Test-Path $venvPython -and (Test-Path $serviceScript)) {
-    Write-Host "Attempting to stop and remove the PrayerPlayer service..."
-    
-    # Check if the service exists before trying to stop it
-    $service = Get-Service -Name "PrayerPlayer" -ErrorAction SilentlyContinue
-    if ($service) {
-        Write-Host "Stopping service..."
-        & "$venvPython" "$serviceScript" stop
-    }
-
-    # Remove the service
-    Write-Host "Removing service..."
-    & "$venvPython" "$serviceScript" remove
-
-    Write-Host "Service removed successfully."
-} else {
-    Write-Warning "Could not find Python executable or service script. Skipping service removal."
-    Write-Warning "You may need to remove the 'PrayerPlayer' service manually (using 'sc delete PrayerPlayer' in an admin command prompt)."
+Write-Host "Attempting to unregister scheduled task '$taskName'..."
+try {
+    Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction Stop
+    Write-Host "Scheduled task '$taskName' removed successfully."
+} catch {
+    Write-Warning "Could not remove scheduled task '$taskName'. It might not exist or you lack permissions. Error: $($_.Exception.Message)"
 }
 
 # --- 2. Remove project files ---

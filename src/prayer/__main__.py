@@ -25,27 +25,57 @@ def main(argv: list[str] | None = None):
         LOG.info("Calendar setup complete.")
         return
     
-    audio_cmd = args.audio # Now audio_cmd is just the path, as play() handles playback directly
+    audio_path = args.audio
 
-    pray_sched = PrayerScheduler(audio_cmd)
+    pray_sched = PrayerScheduler(audio_path)
 
     # initial schedule and daily refresh at 00:05
     pray_sched.refresh(city=args.city, country=args.country, method=args.method, school=args.school)
-    pray_sched.scheduler.add_job(lambda: pray_sched.refresh(city=args.city, country=args.country, method=args.method, school=args.school),
-                                 "cron", hour=0, minute=5, id="daily-refresh")
 
 
     if args.dry_run:
-        from datetime import datetime, timedelta, timezone as _tz
-        t0 = datetime.now(tz=_tz.utc).astimezone(TZ) 
+        from datetime import datetime, timedelta
 
-        LOG.info(f"Dry-run: Playing adhan at {t0.strftime('%H:%M:%S')}")
-        play(audio_cmd)
-        LOG.info(f"Dry-run: Playing duaa at {t0.strftime('%H:%M:%S')}")
-        play(duaa_path())
-        # If you want to test focus mode in dry-run, you can uncomment the line below
-        # focus_mode(disable_network=not args.no_net_off)
-        return # Exit after playing audio in dry-run
+        # Clear the regular schedule to only run the dry-run jobs
+        pray_sched.scheduler.remove_all_jobs()
+        
+        LOG.info("Starting dry run with scheduler...")
+        now = datetime.now(TZ)
+        start_time = now + timedelta(seconds=4)
+        
+        # Adhan duration is approximated from original scheduler logic
+        adhan_duration = timedelta(minutes=2, seconds=53)
+        duaa_time = start_time + adhan_duration
+
+        LOG.info(f"Scheduling Adhan and Focus Mode at: {start_time.strftime('%H:%M:%S')}")
+        LOG.info(f"Scheduling Duaa at: {duaa_time.strftime('%H:%M:%S')}")
+
+        # 1. Schedule Adhan
+        pray_sched.scheduler.add_job(
+            pray_sched.play_adhan, "date", run_date=start_time,
+            id="dry-run-adhan", args=[pray_sched.audio_path]
+        )
+
+        # 2. Schedule Focus Mode
+        pray_sched.scheduler.add_job(
+            pray_sched.trigger_focus_mode, "date", run_date=start_time,
+            id="dry-run-focus"
+        )
+
+        # 3. Schedule Duaa
+        pray_sched.scheduler.add_job(
+            pray_sched.play_duaa, "date", run_date=duaa_time,
+            id="dry-run-duaa"
+        )
+        
+        # Run the scheduler for the dry run
+        LOG.info("Dry run setup complete. Scheduler would have started here.")
+        try:
+            pray_sched.run()
+        except (KeyboardInterrupt, SystemExit):
+            LOG.info("Dry run exit.")
+        
+        return # Exit after the dry run
 
     if args.focus_now:        # خيار جديد
         focus_mode(disable_network=not args.no_net_off)
