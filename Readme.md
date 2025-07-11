@@ -17,25 +17,13 @@ It is designed to run as a background service on Linux desktops (specifically te
 
 ## Quick Setup (Recommended)
 
-To get Prayer Player up and running quickly on your system, use the provided platform-specific setup scripts:
+To get Prayer Player up and running quickly on your system, use the provided installer script:
 
-*   **Linux:**
-    ```bash
-    ./setup_linux.sh
-    ```
+```bash
+python installer.py
+```
 
-*   **Windows:**
-    Open PowerShell as Administrator and run:
-    ```powershell
-    .\setup_windows.ps1
-    ```
-
-*   **macOS:**
-    ```bash
-    ./setup_macos.sh
-    ```
-
-These scripts will guide you through setting up the Python environment, installing dependencies, and configuring Prayer Player to run in the background or foreground.
+This script will guide you through setting up the Python environment, installing dependencies, configuring the application (including calendar integration), and setting it up to run in the background or foreground.
 
 ---
 
@@ -191,23 +179,23 @@ For Windows, you can set up Prayer Player as a native Windows Service using the 
 2.  **Install the Service:**
     Open an **administrative command prompt** (Run as administrator), navigate to your project's root directory, and run the `windows_service.py` script with the `install` command:
     ```bash
-    python src\prayer\windows_service.py install
+    python src\prayer\platform\windows\windows_service.py install
     ```
     You can specify a username and password if the service needs to run under a specific account with network access:
     ```bash
-    python src\prayer\windows_service.py --username ".\LocalSystem" --password "YourPassword" install
+    python src\prayer\platform\windows\windows_service.py --username ".\LocalSystem" --password "YourPassword" install
     ```
 
 3.  **Start the Service:**
     You can start the service from the Services Manager (search for "Services" in Windows Start Menu) or from the administrative command prompt:
     ```bash
-    python src\prayer\windows_service.py start
+    python src\prayer\platform\windows\windows_service.py start
     ```
 
 4.  **Manage the Service:**
-    -   **Stop:** `python src\prayer\windows_service.py stop`
-    -   **Restart:** `python src\prayer\windows_service.py restart`
-    -   **Uninstall:** `python src\prayer\windows_service.py remove`
+    -   **Stop:** `python src\prayer\platform\windows\windows_service.py stop`
+    -   **Restart:** `python src\prayer\platform\windows\windows_service.py restart`
+    -   **Uninstall:** `python src\prayer\platform\windows\windows_service.py remove`
 
     You can also manage the service via the Windows Services Manager GUI.
 
@@ -291,21 +279,10 @@ For users who prefer not to manage Python environments, you can create a single 
 
 ## Uninstallation
 
-To remove the Prayer Player application and all related files, use the provided uninstall scripts. These scripts will stop any running background services, remove the service configurations, and delete the virtual environment and configuration files.
+To remove the Prayer Player application and all related files, use the provided uninstaller script:
 
-*   **Linux:**
-    ```bash
-    ./uninstall_linux.sh
-    ```
+```bash
+python uninstall.py
+```
 
-*   **Windows:**
-    Open PowerShell as Administrator and run:
-    ```powershell
-    .\uninstall_windows.ps1
-    ```
-
-*   **macOS:**
-    ```bash
-    ./uninstall_macos.sh
-    ```
-
+This script will stop any running background services, remove the service configurations, and delete the virtual environment and configuration files.
