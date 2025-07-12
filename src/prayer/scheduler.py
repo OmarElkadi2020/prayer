@@ -115,7 +115,7 @@ class PrayerScheduler:
             
             if not add_busy_block(slot, name, BUSY_SLOT.total_seconds() / 60):
                 LOG.info("Skipping %s, as it's already in the external calendar.", name)
-                continue
+                # continue # This would skip scheduling if already in the calender, but we want to schedule anyway.
 
             # --- Job Scheduling ---
             job_base_id = f"{name}-{slot:%Y%m%d%H%M}"
