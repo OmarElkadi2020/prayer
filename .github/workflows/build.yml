@@ -48,7 +48,7 @@ jobs:
 
     - name: Package the Windows application
       if: matrix.os == 'windows-latest'
-      uses: crazy-max/ghaction-inno-setup@v3.0.0
+      uses: crazy-max/ghaction-inno-setup@v3.1.1
       with:
         script: deployment/windows/setup.iss
 
