@@ -54,11 +54,11 @@ def main(argv: list[str] | None = None):
             LOG.error(f"Failed to install or enable service: {e}")
         return
     if args.setup_calendar:
-        from prayer.auth.auth_manager import AuthManager
-        auth_manager = AuthManager()
-        auth_manager.setup_google_credentials(reauthenticate=args.reauthenticate_gcal)
-        
-        LOG.info("Calendar setup complete.")
+        try:
+            from setup_gui import main as setup_main
+            setup_main()
+        except ImportError:
+            LOG.error("Could not import setup_gui. Please run this script from the project root.")
         return
     
     audio_path = args.audio

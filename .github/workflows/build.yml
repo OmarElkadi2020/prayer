@@ -44,6 +44,10 @@ jobs:
           --add-data "src/prayer/assets;prayer/assets" \
           --add-data "src/prayer/config;prayer/config" \
           --add-data "setup_gui.py;." \
+          --hidden-import "prayer.auth" \
+          --hidden-import "prayer.calendar_api" \
+          --hidden-import "prayer.config" \
+          --hidden-import "prayer.platform" \
           src/prayer/__main__.py
 
     - name: Install Inno Setup
@@ -65,6 +69,10 @@ jobs:
           --add-data "src/prayer/assets:prayer/assets" \
           --add-data "src/prayer/config:prayer/config" \
           --add-data "setup_gui.py:." \
+          --hidden-import "prayer.auth" \
+          --hidden-import "prayer.calendar_api" \
+          --hidden-import "prayer.config" \
+          --hidden-import "prayer.platform" \
           src/prayer/__main__.py
 
         # Create the Debian package structure
@@ -107,6 +115,10 @@ jobs:
           --add-data "src/prayer/assets:prayer/assets" \
           --add-data "src/prayer/config:prayer/config" \
           --add-data "setup_gui.py:." \
+          --hidden-import "prayer.auth" \
+          --hidden-import "prayer.calendar_api" \
+          --hidden-import "prayer.config" \
+          --hidden-import "prayer.platform" \
           src/prayer/__main__.py
 
         # Install create-dmg
