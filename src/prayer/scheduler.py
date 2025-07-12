@@ -44,9 +44,12 @@ class PrayerScheduler:
         """
         LOG.info("Refreshing prayer schedule for %s, %s", city, country)
         self.scheduler.remove_all_jobs()
+        LOG.info("All previous jobs cleared.")
         
         times = today_times(city, country, method, school)
+        LOG.info("Today's prayer times: %s", times)
         self._schedule_day(times)
+        LOG.info("All prayer jobs for today added to the scheduler.")
 
         # Arguments for keyword-only parameters must be passed via `kwargs`.
         job_kwargs = {"city": city, "country": country}
@@ -64,12 +67,13 @@ class PrayerScheduler:
             replace_existing=True,
             kwargs=job_kwargs
         )
-        LOG.info("Daily refresh job scheduled for 00:05.")
+        LOG.info("Next daily refresh job at 00:05 added to the scheduler.")
 
     def run(self):
         """Starts the scheduler's blocking loop."""
-        LOG.info("Starting prayer scheduler...")
+        LOG.info("Starting scheduler, to fire added jobs at the right times.")
         self.scheduler.start()
+        LOG.info("The Schedulaer is started! Jobs waiting to be executed.")
 
     # -----------------------------------------------------------------
     # Action Wrappers (for cleaner scheduling and testing)
@@ -115,7 +119,7 @@ class PrayerScheduler:
             
             if not add_busy_block(slot, name, BUSY_SLOT.total_seconds() / 60):
                 LOG.info("Skipping %s, as it's already in the external calendar.", name)
-                # continue # This would skip scheduling if already in the calender, but we want to schedule anyway.
+                continue # This skips scheduling if already in the calendar.
 
             # --- Job Scheduling ---
             job_base_id = f"{name}-{slot:%Y%m%d%H%M}"

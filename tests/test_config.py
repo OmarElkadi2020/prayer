@@ -6,7 +6,7 @@ from prayer.config import parse_args
 def test_parse_args_defaults():
     """Test that default arguments are parsed correctly."""
     ns = parse_args([])
-    assert ns.city == "Deggendorf"
+    assert ns.city == "Gotteszell"
     assert ns.country == "Germany"
     assert ns.method == 3
     assert ns.school == 0
