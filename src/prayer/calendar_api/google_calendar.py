@@ -39,6 +39,7 @@ class GoogleCalendarService(CalendarService):
             'end': {
                 'dateTime': end_time.isoformat(),
             },
+            'visibility': 'private',
         }
         created_event = self.service.events().insert(calendarId='primary', body=event).execute()
         return created_event
