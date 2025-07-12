@@ -33,25 +33,87 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
 
-    - name: Build the application
+    - name: Build and package the Windows application
+      if: matrix.os == 'windows-latest'
+      uses: crazy-max/ghaction-inno-setup@v3
+      with:
+        script: deployment/windows/setup.iss
+
+    - name: Build and package the Ubuntu application
+      if: matrix.os == 'ubuntu-latest'
       shell: bash
       run: |
-        # Determine the path separator for PyInstaller's --add-data flag
-        SEPARATOR=':'
-        if [ "${{ runner.os }}" = "Windows" ]; then
-          SEPARATOR=';'
-        fi
-
         # Build the application using PyInstaller
         pyinstaller --noconfirm --onefile --windowed \
           --name "PrayerPlayer" \
           --icon "src/prayer/assets/mosque.png" \
-          --add-data "src/prayer/assets${SEPARATOR}prayer/assets" \
-          --add-data "src/prayer/config${SEPARATOR}prayer/config" \
+          --add-data "src/prayer/assets:prayer/assets" \
+          --add-data "src/prayer/config:prayer/config" \
+          --add-data "setup_gui.py:." \
           src/prayer/__main__.py
+
+        # Create the Debian package structure
+        mkdir -p prayer-player-deb/DEBIAN
+        mkdir -p prayer-player-deb/usr/local/bin
+        mkdir -p prayer-player-deb/usr/share/applications
+        mkdir -p prayer-player-deb/usr/share/icons/hicolor/256x256/apps
+
+        # Create the control file
+        echo "Package: prayer-player" > prayer-player-deb/DEBIAN/control
+        echo "Version: 1.0.0" >> prayer-player-deb/DEBIAN/control
+        echo "Architecture: amd64" >> prayer-player-deb/DEBIAN/control
+        echo "Maintainer: Omar <dev@omar.com>" >> prayer-player-deb/DEBIAN/control
+        echo "Description: Prayer times application that plays the Adhan." >> prayer-player-deb/DEBIAN/control
+
+        # Create the desktop entry
+        echo "[Desktop Entry]" > prayer-player-deb/usr/share/applications/prayer-player.desktop
+        echo "Name=Prayer Player" >> prayer-player-deb/usr/share/applications/prayer-player.desktop
+        echo "Exec=/usr/local/bin/PrayerPlayer" >> prayer-player-deb/usr/share/applications/prayer-player.desktop
+        echo "Icon=prayer-player" >> prayer-player-deb/usr/share/applications/prayer-player.desktop
+        echo "Type=Application" >> prayer-player-deb/usr/share/applications/prayer-player.desktop
+        echo "Categories=Utility;" >> prayer-player-deb/usr/share/applications/prayer-player.desktop
+
+        # Copy the application files
+        cp dist/PrayerPlayer prayer-player-deb/usr/local/bin/
+        cp src/prayer/assets/mosque.png prayer-player-deb/usr/share/icons/hicolor/256x256/apps/prayer-player.png
+
+        # Build the Debian package
+        dpkg-deb --build prayer-player-deb
+        mv prayer-player-deb.deb dist/prayer-player-1.0.0-amd64.deb
+
+    - name: Build and package the macOS application
+      if: matrix.os == 'macos-latest'
+      shell: bash
+      run: |
+        # Build the .app bundle
+        pyinstaller --noconfirm --windowed \
+          --name "PrayerPlayer" \
+          --icon "src/prayer/assets/mosque.png" \
+          --add-data "src/prayer/assets:prayer/assets" \
+          --add-data "src/prayer/config:prayer/config" \
+          --add-data "setup_gui.py:." \
+          src/prayer/__main__.py
+
+        # Install create-dmg
+        brew install create-dmg
+
+        # Create the DMG
+        create-dmg \
+          --volname "PrayerPlayer Installer" \
+          --window-pos 200 120 \
+          --window-size 800 400 \
+          --icon-size 100 \
+          --icon "PrayerPlayer.app" 200 190 \
+          --hide-extension "PrayerPlayer.app" \
+          --app-drop-link 600 185 \
+          "dist/PrayerPlayer.dmg" \
+          "dist/PrayerPlayer.app"
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: prayer-player-${{ matrix.os }}
-        path: dist/*
+        path: |
+          dist/*.dmg
+          dist/*.deb
+          dist/output/PrayerPlayer-Setup.exe

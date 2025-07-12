@@ -68,8 +68,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     
     ap.add_argument("--log-level", default="INFO", choices=["DEBUG","INFO","WARNING","ERROR"], help="Set the logging level.")
     
-    ap.add_argument("--setup-calendar", action="store_true", help="Run the calendar setup and exit.")
-    ap.add_argument("--reauthenticate-gcal", action="store_true", help="Force reauthentication for Google Calendar. Only applicable with --setup-calendar.")
+    ap.add_argument("--setup-calendar", action="store_true", help="Runs the interactive calendar setup and then exits.")
+    ap.add_argument("--install-service", action="store_true", help="Installs the application as a startup service.")
+    # Add a reauthenticate flag
+    ap.add_argument("--reauthenticate-gcal", action="store_true", help="Forces re-authentication for Google Calendar.")
+    
+    # Load from config file if it exists
+    config = load_config()
+    ap.add_argument("--focus-now", action="store_true", help="Run a focus session immediately.")
     ns = ap.parse_args(argv)
 
     if ns.reauthenticate_gcal and not ns.setup_calendar:

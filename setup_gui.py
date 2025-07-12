@@ -20,6 +20,7 @@ sys.path.insert(0, PROJECT_ROOT)
 
 from src.prayer import config
 from src.prayer.auth import google_auth
+from src.prayer.platform.service import ServiceManager
 
 class Worker(QObject):
     """Worker object for running tasks in a separate thread."""
@@ -83,6 +84,12 @@ class SetupGUI(QWidget):
         self.countries = []
         self.cities = []
 
+        self.service_manager = ServiceManager(
+            service_name="prayer-player",
+            service_display_name="Prayer Player",
+            service_description="A service to play prayer times."
+        )
+
         self.init_ui()
         self.load_initial_config()
         self.load_countries()
@@ -142,7 +149,12 @@ class SetupGUI(QWidget):
         # Finish Button
         self.finish_button = QPushButton("Finish Setup")
         self.finish_button.clicked.connect(self.finish_setup)
-        layout.addWidget(self.finish_button, 7, 0, 1, 2)
+        layout.addWidget(self.finish_button, 8, 0, 1, 2)
+
+        # Add a "Run at Startup" checkbox
+        self.startup_checkbox = QCheckBox("Run at startup")
+        self.startup_checkbox.setChecked(False) # Default to off
+        layout.addWidget(self.startup_checkbox, 6, 1)
 
         # Adjust column stretch to make the second column expand
         layout.setColumnStretch(1, 1)
@@ -240,8 +252,20 @@ class SetupGUI(QWidget):
     def finish_setup(self):
         self.save_configuration()
         if "successfully" in self.status_label.text():
-            QMessageBox.information(self, "Setup Complete", "Configuration saved. You can now close this window.")
-            self.close()
+            try:
+                if self.startup_checkbox.isChecked():
+                    self.service_manager.install()
+                    self.service_manager.enable()
+                    self.update_status("Service installed and enabled.", "green")
+                else:
+                    self.service_manager.uninstall()
+                    self.update_status("Service uninstalled.", "green")
+                
+                QMessageBox.information(self, "Setup Complete", "Configuration saved. You can now close this window.")
+                self.close()
+            except Exception as e:
+                self.update_status(f"Error managing service: {e}", "red")
+                QMessageBox.showerror(self, "Service Error", f"Failed to manage service: {e}")
         else:
             QMessageBox.warning(self, "Setup Incomplete", "Please save the configuration before finishing.")
 

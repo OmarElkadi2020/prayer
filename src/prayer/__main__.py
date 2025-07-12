@@ -7,7 +7,7 @@ from __future__ import annotations
 import sys
 from importlib import resources
 
-from .config import parse_args, LOG, TZ
+from .config import parse_args, LOG, TZ, load_config
 from .scheduler import PrayerScheduler
 from .actions import focus_mode, play
 
@@ -16,7 +16,43 @@ def duaa_path():
         return str(p)
 
 def main(argv: list[str] | None = None):
+    # Check if config exists, if not, run setup GUI
+    config = load_config()
+    if not config.get('city') or not config.get('country'):
+        LOG.info("Configuration not found. Starting setup GUI.")
+        # We need to find the setup_gui script.
+        # When running from a PyInstaller bundle, the script will be in the same directory.
+        # When running from source, it's in the root of the project.
+        # This is tricky. A better approach would be to include the GUI code in the `prayer` package.
+        # For now, let's assume the user runs `__main__.py` from the project root.
+        try:
+            from setup_gui import main as setup_main
+            setup_main()
+        except ImportError:
+            LOG.error("Could not import setup_gui. Please run this script from the project root.")
+            return
+
+        # After setup, re-check config
+        config = load_config()
+        if not config.get('city') or not config.get('country'):
+            LOG.error("Configuration is still missing after setup. Exiting.")
+            return
+
     args = parse_args(argv)
+    if args.install_service:
+        from prayer.platform.service import ServiceManager
+        service_manager = ServiceManager(
+            service_name="prayer-player",
+            service_display_name="Prayer Player",
+            service_description="A service to play prayer times."
+        )
+        try:
+            service_manager.install()
+            service_manager.enable()
+            LOG.info("Service installed and enabled successfully.")
+        except Exception as e:
+            LOG.error(f"Failed to install or enable service: {e}")
+        return
     if args.setup_calendar:
         from prayer.auth.auth_manager import AuthManager
         auth_manager = AuthManager()
