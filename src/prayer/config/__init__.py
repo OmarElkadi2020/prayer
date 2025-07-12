@@ -58,19 +58,22 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     
     loaded_config = load_config()
     
-    ap.add_argument("--city", default=loaded_config.get('city', "Deggendorf"))
-    ap.add_argument("--country", default=loaded_config.get('country', "Germany"))
-    ap.add_argument("--method", type=int, default=3)
-    ap.add_argument("--school", type=int, default=0)
-    ap.add_argument("--audio", default=adhan_path())
-    ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--no-net-off", action="store_true", help="Do not turn off network during focus mode in dry-run.")
-    ap.add_argument("--cmd", action="store_true", help="Run in command-line mode (no GUI).")
-    ap.add_argument("--log-level", default="INFO", choices=["DEBUG","INFO","WARNING","ERROR"])
-    ap.add_argument("--focus-now", action="store_true",
-                help="أطلق نافذة إعداد الخشوع فورًا ثم اخرج")
+    ap.add_argument("--city", default=loaded_config.get('city', "Deggendorf"), help="City for prayer time calculations.")
+    ap.add_argument("--country", default=loaded_config.get('country', "Germany"), help="Country for prayer time calculations.")
+    ap.add_argument("--method", type=int, default=3, help="Calculation method for prayer times (e.g., 3 for Muslim World League).")
+    ap.add_argument("--school", type=int, default=0, help="School for Asr prayer calculation (e.g., 0 for Shafii, 1 for Hanafi).")
+    ap.add_argument("--audio", default=adhan_path(), help="Path to the Adhan audio file.")
+    ap.add_argument("--dry-run", action="store_true", help="Run the scheduler in dry-run mode for testing.")
+    ap.add_argument("--no-net-off", action="store_true", help="Do not turn off network during focus mode.")
+    
+    ap.add_argument("--log-level", default="INFO", choices=["DEBUG","INFO","WARNING","ERROR"], help="Set the logging level.")
+    
     ap.add_argument("--setup-calendar", action="store_true", help="Run the calendar setup and exit.")
-    ap.add_argument("--reauthenticate-gcal", action="store_true", help="Force reauthentication for Google Calendar.")
+    ap.add_argument("--reauthenticate-gcal", action="store_true", help="Force reauthentication for Google Calendar. Only applicable with --setup-calendar.")
     ns = ap.parse_args(argv)
+
+    if ns.reauthenticate_gcal and not ns.setup_calendar:
+        ap.error("--reauthenticate-gcal can only be used in conjunction with --setup-calendar.")
+
     LOG.setLevel(ns.log_level)
     return ns

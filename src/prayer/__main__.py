@@ -77,9 +77,7 @@ def main(argv: list[str] | None = None):
         
         return # Exit after the dry run
 
-    if args.focus_now:        # خيار جديد
-        focus_mode(disable_network=not args.no_net_off)
-        return             # لا ندخل الجدول الزمني
+    
 
     if not args.dry_run:
         try:
