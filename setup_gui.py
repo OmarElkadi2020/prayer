@@ -1,73 +1,36 @@
-import tkinter as tk
-from tkinter import ttk, messagebox
+from __future__ import annotations
+
 import os
 import sys
 import requests
 import threading
+import json
+
+from PySide6.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
+    QLabel, QComboBox, QPushButton, QLineEdit, QRadioButton, QButtonGroup, QMessageBox
+)
+from PySide6.QtCore import Signal, QObject, Qt, QTimer
+from PySide6.QtGui import QStandardItemModel, QStandardItem
 
 # Add the project root to the Python path
+# Assuming this script is in the project root
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, PROJECT_ROOT)
 
 from src.prayer import config
 from src.prayer.auth import google_auth
 
-class SetupGUI(ttk.Frame):
-    def __init__(self, master: tk.Tk):
-        super().__init__(master, padding=20)
-        master.title("Prayer Player Setup")
-        master.resizable(False, False)
+class Worker(QObject):
+    """Worker object for running tasks in a separate thread."""
+    finished = Signal()
+    error = Signal(str)
+    countries_loaded = Signal(list)
+    cities_loaded = Signal(list, str)
+    status_updated = Signal(str, str)
 
-        self.countries = []
-        self.cities = []
-        self.create_widgets()
-        self.load_initial_config()
-        self.grid()
-        self.load_countries()
-
-    def create_widgets(self):
-        # Country Selection
-        ttk.Label(self, text="Country:").grid(column=0, row=0, sticky="w", pady=5)
-        self.country_var = tk.StringVar()
-        self.country_combo = ttk.Combobox(self, textvariable=self.country_var, width=38)
-        self.country_combo.grid(column=1, row=0, sticky="ew", pady=5)
-        self.country_combo.bind("<<ComboboxSelected>>", self.on_country_select)
-        self.country_combo.bind("<KeyRelease>", lambda e: self._update_dropdown(e, 'country'))
-        self.country_combo.bind('<Button-1>', lambda e: self.after(10, lambda: self._setup_combobox_search(self.country_combo)))
-
-        # City Selection
-        ttk.Label(self, text="City:").grid(column=0, row=1, sticky="w", pady=5)
-        self.city_var = tk.StringVar()
-        self.city_combo = ttk.Combobox(self, textvariable=self.city_var, state="disabled", width=38)
-        self.city_combo.grid(column=1, row=1, sticky="ew", pady=5)
-        self.city_combo.bind("<KeyRelease>", lambda e: self._update_dropdown(e, 'city'))
-        self.city_combo.bind('<Button-1>', lambda e: self.after(10, lambda: self._setup_combobox_search(self.city_combo)))
-
-        # Save Button
-        self.save_button = ttk.Button(self, text="Save Configuration", command=self.save_configuration)
-        self.save_button.grid(column=0, row=2, columnspan=2, pady=10)
-
-        # Google Calendar Authentication
-        ttk.Label(self, text="Google Calendar Setup:").grid(column=0, row=3, sticky="w", pady=5)
-        self.auth_button = ttk.Button(self, text="Authenticate Google Calendar", command=self.authenticate_google_calendar)
-        self.auth_button.grid(column=1, row=3, sticky="ew", pady=5)
-
-        # Status Label
-        self.status_var = tk.StringVar()
-        self.status_label = ttk.Label(self, textvariable=self.status_var, foreground="blue")
-        self.status_label.grid(column=0, row=4, columnspan=2, pady=10)
-
-        # Run Mode Selection
-        ttk.Label(self, text="Run Mode:").grid(column=0, row=5, sticky="w", pady=5)
-        self.run_mode_var = tk.StringVar(value="background")
-        self.background_radio = ttk.Radiobutton(self, text="Run in background (recommended)", variable=self.run_mode_var, value="background")
-        self.background_radio.grid(column=1, row=5, sticky="w", pady=2)
-        self.foreground_radio = ttk.Radiobutton(self, text="Run in foreground (for testing)", variable=self.run_mode_var, value="foreground")
-        self.foreground_radio.grid(column=1, row=6, sticky="w", pady=2)
-
-        # Finish Button
-        self.finish_button = ttk.Button(self, text="Finish Setup", command=self.finish_setup)
-        self.finish_button.grid(column=0, row=8, columnspan=2, pady=10)
+    def __init__(self, parent=None):
+        super().__init__(parent)
 
     def _fetch_data(self, url, params=None):
         try:
@@ -75,62 +38,189 @@ class SetupGUI(ttk.Frame):
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
-            self.update_status(f"API Error: {e}", "red")
-            messagebox.showerror("API Error", f"Failed to fetch data: {e}")
+            self.status_updated.emit(f"API Error: {e}", "red")
+            self.error.emit(f"Failed to fetch data: {e}")
             return None
 
     def load_countries(self):
-        self.update_status("Loading countries...", "blue")
-        threading.Thread(target=self._load_countries_thread, daemon=True).start()
-
-    def _load_countries_thread(self):
+        self.status_updated.emit("Loading countries...", "blue")
         data = self._fetch_data("https://countriesnow.space/api/v0.1/countries")
         if data and not data.get("error"):
-            self.countries = sorted([country["country"] for country in data["data"]])
-            self.country_combo["values"] = self.countries
-            self.update_status("Countries loaded. Please select a country.", "green")
-            self.country_combo.config(state="normal")
-            # If a country was loaded from config, trigger city loading
-            if self.country_var.get() in self.countries:
-                self.on_country_select(None)
+            countries = sorted([country["country"] for country in data["data"]])
+            self.countries_loaded.emit(countries)
+            self.status_updated.emit("Countries loaded. Please select a country.", "green")
         else:
-            self.update_status("Failed to load countries.", "red")
+            self.status_updated.emit("Failed to load countries.", "red")
+        self.finished.emit()
 
-    def on_country_select(self, event):
-        selected_country = self.country_var.get()
-        self.city_combo.set("")
-        self.city_combo.config(state="disabled")
-        self.update_status(f"Loading cities for {selected_country}...", "blue")
-        threading.Thread(target=self._load_cities_thread, args=(selected_country,), daemon=True).start()
-
-    def _load_cities_thread(self, country):
+    def load_cities(self, country):
+        self.status_updated.emit(f"Loading cities for {country}...", "blue")
         data = self._fetch_data("https://countriesnow.space/api/v0.1/countries/cities", {"country": country})
         if data and not data.get("error"):
-            self.cities = sorted(data["data"])
-            self.city_combo["values"] = self.cities
-            self.city_combo.config(state="normal")
-            self.update_status(f"Cities for {country} loaded.", "green")
-            # Set city from config if available
-            current_config = config.load_config()
-            if current_config.get('country') == country and current_config.get('city') in self.cities:
-                self.city_var.set(current_config.get('city'))
+            cities = sorted(data["data"])
+            self.cities_loaded.emit(cities, country)
+            self.status_updated.emit(f"Cities for {country} loaded.", "green")
         else:
-            self.update_status(f"Failed to load cities for {country}.", "red")
+            self.status_updated.emit(f"Failed to load cities for {country}.", "red")
+        self.finished.emit()
+
+    def authenticate_google_calendar(self):
+        self.status_updated.emit("Attempting Google Calendar authentication...", "blue")
+        try:
+            google_auth.get_google_credentials(reauthenticate=True)
+            self.status_updated.emit("Google Calendar authentication successful!", "green")
+        except Exception as e:
+            self.status_updated.emit(f"Google Calendar authentication failed: {e}", "red")
+            self.error.emit(f"Failed to authenticate Google Calendar: {e}")
+        self.finished.emit()
+
+class SetupGUI(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Prayer Player Setup")
+        self.setFixedSize(450, 400) # Fixed size for simplicity, adjust as needed
+
+        self.countries = []
+        self.cities = []
+
+        self.init_ui()
+        self.load_initial_config()
+        self.load_countries()
+
+    def init_ui(self):
+        layout = QGridLayout()
+        self.setLayout(layout)
+
+        # Country Selection
+        layout.addWidget(QLabel("Country:"), 0, 0)
+        self.country_combo = QComboBox()
+        self.country_combo.setEditable(True)
+        self.country_combo.currentIndexChanged.connect(self.on_country_select)
+        self.country_combo.lineEdit().textEdited.connect(self.filter_country_dropdown)
+        layout.addWidget(self.country_combo, 0, 1)
+
+        # City Selection
+        layout.addWidget(QLabel("City:"), 1, 0)
+        self.city_combo = QComboBox()
+        self.city_combo.setEditable(True)
+        self.city_combo.setEnabled(False) # Disable until country is selected
+        self.city_combo.lineEdit().textEdited.connect(self.filter_city_dropdown)
+        layout.addWidget(self.city_combo, 1, 1)
+
+        # Save Button
+        self.save_button = QPushButton("Save Configuration")
+        self.save_button.clicked.connect(self.save_configuration)
+        layout.addWidget(self.save_button, 2, 0, 1, 2) # Span two columns
+
+        # Google Calendar Authentication
+        layout.addWidget(QLabel("Google Calendar Setup:"), 3, 0)
+        self.auth_button = QPushButton("Authenticate Google Calendar")
+        self.auth_button.clicked.connect(self.authenticate_google_calendar)
+        layout.addWidget(self.auth_button, 3, 1)
+
+        # Status Label
+        self.status_label = QLabel("")
+        self.status_label.setStyleSheet("color: blue;")
+        layout.addWidget(self.status_label, 4, 0, 1, 2)
+
+        # Run Mode Selection
+        layout.addWidget(QLabel("Run Mode:"), 5, 0)
+        run_mode_layout = QVBoxLayout()
+        self.run_mode_group = QButtonGroup(self)
+
+        self.background_radio = QRadioButton("Run in background (recommended)")
+        self.background_radio.setChecked(True) # Default
+        self.run_mode_group.addButton(self.background_radio)
+        run_mode_layout.addWidget(self.background_radio)
+
+        self.foreground_radio = QRadioButton("Run in foreground (for testing)")
+        self.run_mode_group.addButton(self.foreground_radio)
+        run_mode_layout.addWidget(self.foreground_radio)
+
+        layout.addLayout(run_mode_layout, 5, 1, 2, 1) # Span two rows, one column
+
+        # Finish Button
+        self.finish_button = QPushButton("Finish Setup")
+        self.finish_button.clicked.connect(self.finish_setup)
+        layout.addWidget(self.finish_button, 7, 0, 1, 2)
+
+        # Adjust column stretch to make the second column expand
+        layout.setColumnStretch(1, 1)
+
+    def update_status(self, message: str, color: str = "blue"):
+        self.status_label.setText(message)
+        self.status_label.setStyleSheet(f"color: {color};")
 
     def load_initial_config(self):
         current_config = config.load_config()
-        self.city_var.set(current_config.get('city', ''))
-        self.country_var.set(current_config.get('country', ''))
-        self.run_mode_var.set(current_config.get('run_mode', 'background'))
+        self.country_combo.setEditText(current_config.get('country', ''))
+        self.city_combo.setEditText(current_config.get('city', ''))
+        if current_config.get('run_mode', 'background') == "foreground":
+            self.foreground_radio.setChecked(True)
+        else:
+            self.background_radio.setChecked(True)
         self.update_status("Configuration loaded.")
 
+    def load_countries(self):
+        self.worker = Worker()
+        self.thread = threading.Thread(target=self.worker.load_countries, daemon=True)
+        self.worker.countries_loaded.connect(self._on_countries_loaded)
+        self.worker.status_updated.connect(self.update_status)
+        self.worker.error.connect(lambda msg: QMessageBox.showerror("API Error", msg))
+        self.thread.start()
+
+    def _on_countries_loaded(self, countries):
+        self.countries = countries
+        self.country_combo.clear()
+        self.country_combo.addItems(self.countries)
+        self.country_combo.setEnabled(True)
+        # If a country was loaded from config, trigger city loading
+        if self.country_combo.currentText() in self.countries:
+            self.on_country_select()
+
+    def filter_country_dropdown(self, text):
+        self.country_combo.clear()
+        filtered_countries = [c for c in self.countries if text.lower() in c.lower()]
+        self.country_combo.addItems(filtered_countries)
+        self.country_combo.setEditText(text) # Keep the typed text
+        self.country_combo.showPopup() # Show dropdown immediately
+
+    def on_country_select(self):
+        selected_country = self.country_combo.currentText()
+        self.city_combo.clear()
+        self.city_combo.setEnabled(False)
+        if selected_country:
+            self.worker = Worker()
+            self.thread = threading.Thread(target=self.worker.load_cities, args=(selected_country,), daemon=True)
+            self.worker.cities_loaded.connect(self._on_cities_loaded)
+            self.worker.status_updated.connect(self.update_status)
+            self.worker.error.connect(lambda msg: QMessageBox.showerror("API Error", msg))
+            self.thread.start()
+
+    def _on_cities_loaded(self, cities, country):
+        self.cities = cities
+        self.city_combo.clear()
+        self.city_combo.addItems(self.cities)
+        self.city_combo.setEnabled(True)
+        # Set city from config if available
+        current_config = config.load_config()
+        if current_config.get('country') == country and current_config.get('city') in self.cities:
+            self.city_combo.setEditText(current_config.get('city'))
+
+    def filter_city_dropdown(self, text):
+        self.city_combo.clear()
+        filtered_cities = [c for c in self.cities if text.lower() in c.lower()]
+        self.city_combo.addItems(filtered_cities)
+        self.city_combo.setEditText(text) # Keep the typed text
+        self.city_combo.showPopup() # Show dropdown immediately
+
     def save_configuration(self):
-        city = self.city_var.get().strip()
-        country = self.country_var.get().strip()
-        run_mode = self.run_mode_var.get()
+        city = self.city_combo.currentText().strip()
+        country = self.country_combo.currentText().strip()
+        run_mode = "background" if self.background_radio.isChecked() else "foreground"
 
         if not city or not country:
-            messagebox.showwarning("Input Error", "Country and City must be selected.")
+            QMessageBox.warning(self, "Input Error", "Country and City must be selected.")
             return
 
         try:
@@ -138,82 +228,28 @@ class SetupGUI(ttk.Frame):
             self.update_status("Configuration saved successfully!", "green")
         except Exception as e:
             self.update_status(f"Error saving config: {e}", "red")
-            messagebox.showerror("Save Error", f"Failed to save configuration: {e}")
+            QMessageBox.showerror(self, "Save Error", f"Failed to save configuration: {e}")
 
     def authenticate_google_calendar(self):
-        self.update_status("Attempting Google Calendar authentication...", "blue")
-        try:
-            google_auth.get_google_credentials(reauthenticate=True)
-            self.update_status("Google Calendar authentication successful!", "green")
-        except Exception as e:
-            self.update_status(f"Google Calendar authentication failed: {e}", "red")
-            messagebox.showerror("Authentication Error", f"Failed to authenticate Google Calendar: {e}")
+        self.worker = Worker()
+        self.thread = threading.Thread(target=self.worker.authenticate_google_calendar, daemon=True)
+        self.worker.status_updated.connect(self.update_status)
+        self.worker.error.connect(lambda msg: QMessageBox.showerror("Authentication Error", msg))
+        self.thread.start()
 
     def finish_setup(self):
         self.save_configuration()
-        if "successfully" in self.status_var.get():
-            messagebox.showinfo("Setup Complete", "Configuration saved. You can now close this window.")
-            self.master.destroy()
+        if "successfully" in self.status_label.text():
+            QMessageBox.information(self, "Setup Complete", "Configuration saved. You can now close this window.")
+            self.close()
         else:
-            messagebox.showwarning("Setup Incomplete", "Please save the configuration before finishing.")
-
-    def _update_dropdown(self, event, combo_type):
-        combo = event.widget
-        var = combo.cget("textvariable")
-        text = self.getvar(var)
-
-        if combo_type == 'country':
-            source_list = self.countries
-        else:  # city
-            source_list = self.cities
-
-        if not text:
-            filtered_list = source_list
-        else:
-            filtered_list = [item for item in source_list if text.lower() in item.lower()]
-
-        # Preserve the entered text and cursor position
-        current_text = text
-        combo['values'] = filtered_list
-        combo.set(current_text)
-        combo.icursor(tk.END)
-
-    def _setup_combobox_search(self, combo):
-        """
-        Binds keypress events on the combobox's dropdown list to redirect them
-        to the main entry field. This is a workaround for a known issue in
-        Tkinter on Linux where the dropdown list steals focus.
-        """
-        # This uses internal Tkinter details and might be fragile.
-        try:
-            popdown_window_name = self.tk.eval(f'ttk::combobox::PopdownWindow {combo}')
-            if popdown_window_name:
-                listbox = f'{popdown_window_name}.f.l'
-                handler = lambda e, c=combo: self._on_listbox_keypress(e, c)
-                self.tk.call('bind', listbox, '<KeyPress>', handler)
-        except tk.TclError:
-            # This can happen if the popdown window isn't visible yet.
-            # The <Button-1> binding will retry.
-            pass
-
-    def _on_listbox_keypress(self, event, combo):
-        """
-        Handles a keypress on the dropdown list by redirecting it to the
-        combobox entry widget.
-        """
-        if event.char:
-            combo.focus()
-            combo.event_generate(f'<KeyPress-{event.keysym}>')
-            return 'break' # Stop the listbox from processing the event
-
-    def update_status(self, message: str, color: str = "blue"):
-        self.status_var.set(message)
-        self.status_label.config(foreground=color)
+            QMessageBox.warning(self, "Setup Incomplete", "Please save the configuration before finishing.")
 
 def main():
-    root = tk.Tk()
-    SetupGUI(root)
-    root.mainloop()
+    app = QApplication(sys.argv)
+    gui = SetupGUI()
+    gui.show()
+    sys.exit(app.exec())
 
 if __name__ == "__main__":
     main()
