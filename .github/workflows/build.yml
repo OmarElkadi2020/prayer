@@ -131,4 +131,4 @@ jobs:
         path: |
           dist/*.dmg
           dist/*.deb
-          dist/output/PrayerPlayer-Setup.exe
+          deployment/windows/Output/*.exe
