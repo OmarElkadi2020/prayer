@@ -43,11 +43,11 @@ jobs:
           --icon "src/prayer/assets/mosque.png" \
           --add-data "src/prayer/assets;prayer/assets" \
           --add-data "src/prayer/config;prayer/config" \
-          --add-data "setup_gui.py;." \
           --hidden-import "prayer.auth" \
           --hidden-import "prayer.calendar_api" \
           --hidden-import "prayer.config" \
           --hidden-import "prayer.platform" \
+          --hidden-import "prayer.gui" \
           src/prayer/__main__.py
 
     - name: Install Inno Setup
@@ -68,11 +68,11 @@ jobs:
           --icon "src/prayer/assets/mosque.png" \
           --add-data "src/prayer/assets:prayer/assets" \
           --add-data "src/prayer/config:prayer/config" \
-          --add-data "setup_gui.py:." \
           --hidden-import "prayer.auth" \
           --hidden-import "prayer.calendar_api" \
           --hidden-import "prayer.config" \
           --hidden-import "prayer.platform" \
+          --hidden-import "prayer.gui" \
           src/prayer/__main__.py
 
         # Create the Debian package structure
@@ -114,11 +114,11 @@ jobs:
           --icon "src/prayer/assets/mosque.png" \
           --add-data "src/prayer/assets:prayer/assets" \
           --add-data "src/prayer/config:prayer/config" \
-          --add-data "setup_gui.py:." \
           --hidden-import "prayer.auth" \
           --hidden-import "prayer.calendar_api" \
           --hidden-import "prayer.config" \
           --hidden-import "prayer.platform" \
+          --hidden-import "prayer.gui" \
           src/prayer/__main__.py
 
         # Install create-dmg

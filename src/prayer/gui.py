@@ -8,7 +8,7 @@ import json
 
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
-    QLabel, QComboBox, QPushButton, QLineEdit, QRadioButton, QButtonGroup, QMessageBox
+    QLabel, QComboBox, QPushButton, QLineEdit, QRadioButton, QButtonGroup, QMessageBox, QCheckBox
 )
 from PySide6.QtCore import Signal, QObject, Qt, QTimer
 from PySide6.QtGui import QStandardItemModel, QStandardItem
@@ -18,9 +18,9 @@ from PySide6.QtGui import QStandardItemModel, QStandardItem
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, PROJECT_ROOT)
 
-from src.prayer import config
-from src.prayer.auth import google_auth
-from src.prayer.platform.service import ServiceManager
+from prayer import config
+from prayer.auth import google_auth
+from prayer.platform.service import ServiceManager
 
 class Worker(QObject):
     """Worker object for running tasks in a separate thread."""

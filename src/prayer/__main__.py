@@ -20,17 +20,8 @@ def main(argv: list[str] | None = None):
     config = load_config()
     if not config.get('city') or not config.get('country'):
         LOG.info("Configuration not found. Starting setup GUI.")
-        # We need to find the setup_gui script.
-        # When running from a PyInstaller bundle, the script will be in the same directory.
-        # When running from source, it's in the root of the project.
-        # This is tricky. A better approach would be to include the GUI code in the `prayer` package.
-        # For now, let's assume the user runs `__main__.py` from the project root.
-        try:
-            from setup_gui import main as setup_main
-            setup_main()
-        except ImportError:
-            LOG.error("Could not import setup_gui. Please run this script from the project root.")
-            return
+        from prayer.gui import main as setup_main
+        setup_main()
 
         # After setup, re-check config
         config = load_config()
@@ -54,11 +45,8 @@ def main(argv: list[str] | None = None):
             LOG.error(f"Failed to install or enable service: {e}")
         return
     if args.setup_calendar:
-        try:
-            from setup_gui import main as setup_main
-            setup_main()
-        except ImportError:
-            LOG.error("Could not import setup_gui. Please run this script from the project root.")
+        from prayer.gui import main as setup_main
+        setup_main()
         return
     
     audio_path = args.audio
