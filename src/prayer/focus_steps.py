@@ -401,18 +401,20 @@ class StepWindow(QWidget):
 # ❸ Application Entry Point
 # ==================================================================
 def run():
-    """Initializes and runs the QApplication."""
-    app = QApplication(sys.argv)
-    # Set the application layout direction to Right-to-Left
-    app.setLayoutDirection(Qt.RightToLeft)
-    
-    # Set a default font that supports Arabic
-    font = QFont(FONT_FAMILY)
-    app.setFont(font)
+    """Initializes and runs the QApplication, or reuses an existing instance."""
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication(sys.argv)
+        # Set the application layout direction to Right-to-Left
+        app.setLayoutDirection(Qt.RightToLeft)
+        
+        # Set a default font that supports Arabic
+        font = QFont(FONT_FAMILY)
+        app.setFont(font)
 
     window = StepWindow()
     window.show()
-    sys.exit(app.exec())
+    app.exec()
 
 if __name__ == "__main__":
     # This allows the script to be run directly.
