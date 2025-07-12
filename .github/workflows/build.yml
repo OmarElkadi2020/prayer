@@ -34,6 +34,7 @@ jobs:
         pip install -r requirements-dev.txt
 
     - name: Build the application
+      shell: bash
       run: |
         # Determine the path separator for PyInstaller's --add-data flag
         SEPARATOR=':'
