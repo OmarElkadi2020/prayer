@@ -46,9 +46,9 @@ jobs:
           --add-data "setup_gui.py;." \
           src/prayer/__main__.py
 
-    - name: Setup Inno Setup
+    - name: Install Inno Setup
       if: matrix.os == 'windows-latest'
-      uses: jerryk/setup-inno-setup@v1
+      run: choco install innosetup --no-progress
 
     - name: Compile Windows installer
       if: matrix.os == 'windows-latest'
