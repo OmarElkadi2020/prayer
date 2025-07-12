@@ -46,11 +46,13 @@ jobs:
           --add-data "setup_gui.py;." \
           src/prayer/__main__.py
 
-    - name: Package the Windows application
+    - name: Setup Inno Setup
       if: matrix.os == 'windows-latest'
-      uses: crazy-max/ghaction-inno-setup@v3
-      with:
-        script: deployment/windows/setup.iss
+      uses: jerryk/setup-inno-setup@v1
+
+    - name: Compile Windows installer
+      if: matrix.os == 'windows-latest'
+      run: iscc "deployment\windows\setup.iss"
 
     - name: Build and package the Ubuntu application
       if: matrix.os == 'ubuntu-latest'
