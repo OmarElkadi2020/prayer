@@ -33,7 +33,20 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
 
-    - name: Build and package the Windows application
+    - name: Build the Windows application
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: |
+        # Build the application using PyInstaller
+        pyinstaller --noconfirm --onefile --windowed \
+          --name "PrayerPlayer" \
+          --icon "src/prayer/assets/mosque.png" \
+          --add-data "src/prayer/assets;prayer/assets" \
+          --add-data "src/prayer/config;prayer/config" \
+          --add-data "setup_gui.py;." \
+          src/prayer/__main__.py
+
+    - name: Package the Windows application
       if: matrix.os == 'windows-latest'
       uses: crazy-max/ghaction-inno-setup@v3
       with:
