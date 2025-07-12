@@ -57,7 +57,7 @@ def add_busy_block(slot_start: datetime, summary: str, duration_minutes: int) ->
         events = service.get_events(day_start, day_end)
         for event in events:
             if event.get('summary', '').lower() == summary.lower():
-                LOG.info(f"Event '{summary}' already exists for today. Skipping.")
+                LOG.debug(f"Event '{summary}' already exists in Calender for today. Skip readding it.")
                 return False
 
         service.create_event(summary, slot_start, slot_end, "Scheduled by Prayer App")
