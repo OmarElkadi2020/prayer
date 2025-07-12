@@ -11,7 +11,7 @@ SolidCompression=yes
 PrivilegesRequired=admin
 
 [Files]
-Source: "dist\PrayerPlayer.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\dist\PrayerPlayer.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\Prayer Player"; Filename: "{app}\PrayerPlayer.exe"
