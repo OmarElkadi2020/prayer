@@ -63,6 +63,9 @@ jobs:
           --hidden-import "prayer.state" \
           --hidden-import "prayer.tray_icon" \
           --hidden-import "json" \
+          --hidden-import "argcomplete" \
+          --hidden-import "zoneinfo" \
+          --hidden-import "appdirs" \
           src/prayer/__main__.py
 
     # NEW STEP: Test application startup (dry run)
