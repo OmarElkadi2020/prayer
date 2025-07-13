@@ -143,8 +143,8 @@ def setup_tray_icon():
     status_thread = threading.Thread(target=update_tray_status, args=(icon,), daemon=True)
     status_thread.start()
 
-    # Start the main prayer time scheduler loop
-    scheduler.run_scheduler_in_thread()
+    # Start the main prayer time scheduler loop in a separate thread after the GUI is ready
+    QTimer.singleShot(0, scheduler.run_scheduler_in_thread)
 
     # On first run, if config is missing, show settings
     current_config = config.load_config()

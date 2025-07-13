@@ -7,9 +7,9 @@ from __future__ import annotations
 import sys
 from importlib import resources
 
-from .config import parse_args, LOG, TZ, load_config
-from .scheduler import PrayerScheduler
-from .actions import focus_mode, play
+from prayer.config import parse_args, LOG, TZ, load_config
+from prayer.scheduler import PrayerScheduler
+from prayer.actions import focus_mode, play
 
 def duaa_path():
     with resources.path('prayer.assets', 'duaa_after_adhan.wav') as p:
@@ -18,7 +18,7 @@ def duaa_path():
 def main(argv: list[str] | None = None):
     # If no command-line arguments are provided, launch the default GUI tray mode.
     if not argv:
-        from . import tray_icon
+        from prayer import tray_icon
         tray_icon.setup_tray_icon()
         return
 

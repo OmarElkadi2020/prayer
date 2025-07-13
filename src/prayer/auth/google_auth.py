@@ -8,11 +8,18 @@ from googleapiclient.discovery import build
 
 SCOPES = ['https://www.googleapis.com/auth/calendar', 'https://www.googleapis.com/auth/userinfo.email', 'openid']
 
-# Determine the project root dynamically
-# This assumes google_auth.py is located at src/prayer/auth/google_auth.py
-# and the project root is 4 levels up from this file.
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-CONFIG_DIR = os.path.join(PROJECT_ROOT, 'src', 'prayer', 'config')
+# Determine the base path for resources, considering PyInstaller bundling.
+# In a PyInstaller bundle, sys._MEIPASS points to the temporary directory
+# where the application's data files are extracted.
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    BASE_PATH = sys._MEIPASS
+else:
+    # For development, determine the project root dynamically.
+    # This assumes google_auth.py is located at src/prayer/auth/google_auth.py
+    # and the project root is 4 levels up from this file.
+    BASE_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+CONFIG_DIR = os.path.join(BASE_PATH, 'prayer', 'config')
 TOKEN_FILE = os.path.join(CONFIG_DIR, 'token.json')
 
 def get_google_credentials(reauthenticate=False):
