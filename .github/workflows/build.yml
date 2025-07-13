@@ -64,6 +64,19 @@ jobs:
           --hidden-import "prayer.tray_icon" \
           src/prayer/__main__.py
 
+    # NEW STEP: Test application startup (dry run)
+    - name: Test application startup (dry run)
+      shell: bash
+      run: |
+        echo "Running startup test for ${{ runner.os }}"
+        if [[ "${{ runner.os }}" == "Windows" ]]; then
+          ./dist/PrayerPlayer.exe --dry-run
+        elif [[ "${{ runner.os }}" == "Linux" ]]; then
+          ./dist/PrayerPlayer --dry-run
+        elif [[ "${{ runner.os }}" == "macOS" ]]; then
+          ./dist/PrayerPlayer.app/Contents/MacOS/PrayerPlayer --dry-run
+        fi
+
     # --- Windows-Specific Steps ---
     - name: Install Inno Setup for Windows installer
       if: matrix.os == 'windows-latest'
