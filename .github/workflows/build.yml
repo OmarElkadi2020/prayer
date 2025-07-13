@@ -62,6 +62,32 @@ jobs:
         --hidden-import "prayer.gui" \
         --hidden-import "prayer.state" \
         --hidden-import "prayer.tray_icon" \
+        --hidden-import "json" \
+        --hidden-import "argcomplete" \
+        --hidden-import "zoneinfo" \
+        --hidden-import "appdirs" \
+        --hidden-import "prayer.scheduler" \
+        --hidden-import "prayer.actions" \
+        --hidden-import "prayer.tray_icon" \
+        --hidden-import "prayer.gui" \
+        --hidden-import "prayer.platform.service" \
+        --hidden-import "APScheduler" \
+        --hidden-import "python_vlc" \
+        --hidden-import "keyring" \
+        --hidden-import "tzlocal" \
+        --hidden-import "pystray" \
+        --hidden-import "PySide6.QtSvg" \
+        --hidden-import "PySide6.QtNetwork" \
+        --hidden-import "PySide6.QtWidgets" \
+        --hidden-import "requests" \
+        --hidden-import "ics" \
+        --hidden-import "schedule" \
+        --hidden-import "google_api_python_client" \
+        --hidden-import "google_auth_httplib2" \
+        --hidden-import "google_auth_oauthlib" \
+        --hidden-import "msgraph_sdk" \
+        --hidden-import "playsound" \
+        --hidden-import "PySide6" \
         src/prayer/__main__.py
 
     # NEW STEP: Test application startup (dry run)
