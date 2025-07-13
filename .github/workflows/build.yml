@@ -61,7 +61,7 @@ jobs:
       run: iscc "deployment\windows\setup.iss"
 
     - name: Build and package the Ubuntu application
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-22.04'
       shell: bash
       run: |
         # Build the application using PyInstaller
