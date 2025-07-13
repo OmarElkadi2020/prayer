@@ -51,22 +51,27 @@ jobs:
         fi
 
         pyinstaller --noconfirm --onefile --windowed \
-          --name "PrayerPlayer" \
-          --icon "src/prayer/assets/mosque.png" \
-          --add-data "src/prayer/assets${SEPARATOR}prayer/assets" \
-          --add-data "src/prayer/config${SEPARATOR}prayer/config" \
-          --hidden-import "prayer.auth" \
-          --hidden-import "prayer.calendar_api" \
-          --hidden-import "prayer.config" \
-          --hidden-import "prayer.platform" \
-          --hidden-import "prayer.gui" \
-          --hidden-import "prayer.state" \
-          --hidden-import "prayer.tray_icon" \
-          --hidden-import "json" \
-          --hidden-import "argcomplete" \
-          --hidden-import "zoneinfo" \
-          --hidden-import "appdirs" \
-          src/prayer/__main__.py
+        --name "PrayerPlayer" \
+        --icon "src/prayer/assets/mosque.png" \
+        --add-data "src/prayer/assets:prayer/assets" \
+        --add-data "src/prayer/config:prayer/config" \
+        --hidden-import "prayer.auth" \
+        --hidden-import "prayer.calendar_api" \
+        --hidden-import "prayer.config" \
+        --hidden-import "prayer.platform" \
+        --hidden-import "prayer.gui" \
+        --hidden-import "prayer.state" \
+        --hidden-import "prayer.tray_icon" \
+        src/prayer/__main__.py
+
+        # Move the built executable to the dist folder.
+        if [[ "${{ runner.os }}" == "Windows" ]]; then
+          mv dist/PrayerPlayer.exe dist/
+        elif [[ "${{ runner.os }}" == "Linux" ]]; then
+          mv dist/PrayerPlayer dist/
+        elif [[ "${{ runner.os }}" == "macOS" ]]; then
+          mv dist/PrayerPlayer.app dist/
+        fi
 
     # NEW STEP: Test application startup (dry run)
     - name: Test application startup (dry run)

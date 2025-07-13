@@ -84,7 +84,7 @@ def main(argv: list[str] | None = None):
 
         # 1. Schedule Adhan
         pray_sched.scheduler.add_job(
-            pray_sched.play_adhan, "date", run_date=start_time,
+            pray_sched.play_adhan_and_duaa, "date", run_date=start_time,
             id="dry-run-adhan", args=[pray_sched.audio_path]
         )
 
