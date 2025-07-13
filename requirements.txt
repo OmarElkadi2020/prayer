@@ -17,3 +17,7 @@ argcomplete==3.3.0
 PySide6
 playsound==1.2.2
 pytest
+pystray
+pystray
+Pillow
+google-api-python-client

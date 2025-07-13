@@ -48,6 +48,8 @@ jobs:
           --hidden-import "prayer.config" \
           --hidden-import "prayer.platform" \
           --hidden-import "prayer.gui" \
+          --hidden-import "prayer.state" \
+          --hidden-import "prayer.tray_icon" \
           src/prayer/__main__.py
 
     - name: Install Inno Setup
@@ -73,6 +75,8 @@ jobs:
           --hidden-import "prayer.config" \
           --hidden-import "prayer.platform" \
           --hidden-import "prayer.gui" \
+          --hidden-import "prayer.state" \
+          --hidden-import "prayer.tray_icon" \
           src/prayer/__main__.py
 
         # Create the Debian package structure
@@ -119,6 +123,8 @@ jobs:
           --hidden-import "prayer.config" \
           --hidden-import "prayer.platform" \
           --hidden-import "prayer.gui" \
+          --hidden-import "prayer.state" \
+          --hidden-import "prayer.tray_icon" \
           src/prayer/__main__.py
 
         # Install create-dmg

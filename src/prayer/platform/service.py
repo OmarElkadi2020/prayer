@@ -64,11 +64,14 @@ class ServiceManager:
 
     def disable(self):
         if self.system == "Linux":
-            self._run_command(["systemctl", "--user", "disable", self.service_name])
+            self.uninstall() # Uninstalling the .desktop file effectively disables it
         elif self.system == "Darwin":
-            self._run_command(["launchctl", "disable", f"gui/{os.getuid()}/{self.service_name}"])
+            plist_path = os.path.expanduser(f"~/Library/LaunchAgents/{self.service_name}.plist")
+            if os.path.exists(plist_path):
+                self._run_command(["launchctl", "unload", plist_path])
+            self.uninstall() # Uninstall if present
         elif self.system == "Windows":
-            self._run_command(["sc", "config", self.service_name, "start=", "disabled"])
+            self.uninstall() # Uninstalling the shortcut effectively disables it
 
     def start(self):
         if self.system == "Linux":
@@ -85,6 +88,19 @@ class ServiceManager:
             self._run_command(["launchctl", "stop", self.service_name])
         elif self.system == "Windows":
             self._run_command(["sc", "stop", self.service_name])
+
+    def is_enabled(self) -> bool:
+        if self.system == "Linux":
+            desktop_entry_path = os.path.expanduser(f"~/.config/autostart/{self.service_name}.desktop")
+            return os.path.exists(desktop_entry_path)
+        elif self.system == "Darwin":
+            plist_path = os.path.expanduser(f"~/Library/LaunchAgents/{self.service_name}.plist")
+            return os.path.exists(plist_path)
+        elif self.system == "Windows":
+            startup_folder = os.path.join(os.environ['APPDATA'], 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup')
+            shortcut_path = os.path.join(startup_folder, f"{self.service_display_name}.lnk")
+            return os.path.exists(shortcut_path)
+        return False
 
     def _install_linux(self):
         service_file_path = os.path.expanduser(f"~/.config/systemd/user/{self.service_name}.service")
@@ -105,12 +121,9 @@ WantedBy=default.target
         self._run_command(["systemctl", "--user", "daemon-reload"])
 
     def _uninstall_linux(self):
-        service_file_path = os.path.expanduser(f"~/.config/systemd/user/{self.service_name}.service")
-        if os.path.exists(service_file_path):
-            self.stop()
-            self.disable()
-            os.remove(service_file_path)
-            self._run_command(["systemctl", "--user", "daemon-reload"])
+        desktop_entry_path = os.path.expanduser(f"~/.config/autostart/{self.service_name}.desktop")
+        if os.path.exists(desktop_entry_path):
+            os.remove(desktop_entry_path)
 
     def _install_macos(self):
         plist_path = os.path.expanduser(f"~/Library/LaunchAgents/{self.service_name}.plist")
@@ -143,20 +156,26 @@ WantedBy=default.target
             os.remove(plist_path)
 
     def _install_windows(self):
-        # This is a simplified version. A real implementation might need to use pywin32 or similar libraries.
-        executable_path = self._get_executable_path()
+        startup_folder = os.path.join(os.environ['APPDATA'], 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup')
+        shortcut_path = os.path.join(startup_folder, f"{self.service_display_name}.lnk")
+        target_path = self._get_executable_path()
         program_args = ' '.join(self._get_program_arguments())
-        command = [
-            "sc", "create", self.service_name,
-            "binPath=", f'"{executable_path}" {program_args}',
-            "DisplayName=", self.service_display_name,
-            "start=", "auto"
-        ]
-        self._run_command(command, as_root=True)
+
+        # PowerShell command to create a shortcut
+        powershell_command = f"""
+        $shell = New-Object -ComObject WScript.Shell
+        $shortcut = $shell.CreateShortcut('{shortcut_path}')
+        $shortcut.TargetPath = '{target_path}'
+        $shortcut.Arguments = '{program_args}'
+        $shortcut.Save()
+        """
+        self._run_command(["powershell.exe", "-Command", powershell_command])
 
     def _uninstall_windows(self):
-        self.stop()
-        self._run_command(["sc", "delete", self.service_name], as_root=True)
+        startup_folder = os.path.join(os.environ['APPDATA'], 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup')
+        shortcut_path = os.path.join(startup_folder, f"{self.service_display_name}.lnk")
+        if os.path.exists(shortcut_path):
+            os.remove(shortcut_path)
 
 if __name__ == '__main__':
     # Example usage:

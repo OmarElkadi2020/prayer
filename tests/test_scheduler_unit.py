@@ -6,7 +6,7 @@ from prayer.scheduler import PrayerScheduler, duaa_path
 from prayer.config import TZ
 from datetime import datetime
 
-@patch('prayer.scheduler.BlockingScheduler')
+@patch('prayer.scheduler.BackgroundScheduler')
 def test_scheduler_initialization(mock_scheduler_class):
     """Test that the PrayerScheduler initializes correctly."""
     mock_scheduler_instance = MagicMock()
@@ -64,13 +64,26 @@ def test_trigger_focus_mode_wrapper(mock_focus_mode):
     scheduler.trigger_focus_mode()
     mock_focus_mode.assert_called_once()
 
-@patch('prayer.scheduler.BlockingScheduler')
+@patch('prayer.scheduler.BackgroundScheduler')
 def test_run_starts_scheduler(mock_scheduler_class):
-    """Test that the run method starts the scheduler."""
+    """Test that the run method starts the scheduler if not running."""
     mock_scheduler_instance = MagicMock()
+    mock_scheduler_instance.running = False
     mock_scheduler_class.return_value = mock_scheduler_instance
     
     scheduler = PrayerScheduler("test_cmd")
     scheduler.run()
     
     mock_scheduler_instance.start.assert_called_once()
+
+@patch('prayer.scheduler.BackgroundScheduler')
+def test_run_does_not_start_scheduler_if_running(mock_scheduler_class):
+    """Test that the run method does not start the scheduler if it's already running."""
+    mock_scheduler_instance = MagicMock()
+    mock_scheduler_instance.running = True
+    mock_scheduler_class.return_value = mock_scheduler_instance
+    
+    scheduler = PrayerScheduler("test_cmd")
+    scheduler.run()
+    
+    mock_scheduler_instance.start.assert_not_called()

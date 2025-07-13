@@ -19,8 +19,3 @@ Name: "{commondesktop}\Prayer Player"; Filename: "{app}\PrayerPlayer.exe"; Tasks
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a &desktop icon"; GroupDescription: "Additional shortcuts:";
-Name: "runatstartup"; Description: "Run Prayer Player at startup"; GroupDescription: "Startup options:";
-
-[Run]
-Filename: "{app}\PrayerPlayer.exe"; Description: "Launch Prayer Player"; Flags: nowait postinstall skipifsilent
-Filename: "{app}\PrayerPlayer.exe"; Parameters: "--install-service"; Flags: runhidden; Tasks: runatstartup

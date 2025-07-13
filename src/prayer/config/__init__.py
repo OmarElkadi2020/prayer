@@ -28,19 +28,38 @@ CONFIG_DIR = os.path.join(PROJECT_ROOT, 'src', 'prayer', 'config')
 CONFIG_FILE_PATH = os.path.join(CONFIG_DIR, 'config.json')
 
 def load_config():
+    """Loads configuration from the JSON file, providing sensible defaults."""
+    defaults = {
+        'city': 'Deggendorf',
+        'country': 'Germany',
+        'method': 3,
+        'school': 0,
+        'enabled_prayers': ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"],
+        'custom_audio_path': None,
+        'run_mode': 'background'
+    }
     if os.path.exists(CONFIG_FILE_PATH):
         try:
             with open(CONFIG_FILE_PATH, 'r') as f:
-                return json.load(f)
+                config = json.load(f)
+                # Merge loaded config with defaults to ensure all keys are present
+                defaults.update(config)
+                return defaults
         except json.JSONDecodeError:
             LOG.warning(f"Could not decode JSON from {CONFIG_FILE_PATH}. Returning default config.")
-            return {'city': 'Deggendorf', 'country': 'Germany', 'run_mode': 'background'}
-    return {'city': 'Deggendorf', 'country': 'Germany', 'run_mode': 'background'}
+            return defaults
+    return defaults
 
-def save_config(city, country, run_mode):
+def save_config(**kwargs):
+    """Saves the given configuration keys to the config file."""
     os.makedirs(CONFIG_DIR, exist_ok=True)
+    
+    # Load existing config to preserve any keys that aren't being updated
+    current_config = load_config()
+    current_config.update(kwargs)
+    
     with open(CONFIG_FILE_PATH, 'w') as f:
-        json.dump({'city': city, 'country': country, 'run_mode': run_mode}, f, indent=4)
+        json.dump(current_config, f, indent=4)
     LOG.info(f"Configuration saved to {CONFIG_FILE_PATH}")
 
 # --- logging ---------------------------------------------------------------

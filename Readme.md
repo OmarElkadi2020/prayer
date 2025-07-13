@@ -1,11 +1,7 @@
 # Prayer Player
+Prayer Player helps you stay consistent with your prayers by automating prayer time scheduling and reminders. It fetches accurate prayer times, plays the Adhan automatically, and can reserve time in your calendar so you never miss a prayer. Designed to run quietly in the background, it makes it easy to prioritize your daily prayers without manual effort.
 
-Prayer Player is a Python application that automatically plays the Adhan (Islamic call to prayer) at the correct times. It fetches prayer times from an online API, schedules the Adhan playback, and can even integrate with your **google** calendar to block out busy slots.
-
-It is designed to run as a background service on Linux desktops (specifically tested on Ubuntu 22.04 with GNOME).
-
-## Features
-
+## Feature
 -   **Automatic Prayer Times:** Fetches daily prayer times for any city using the aladhan.com API.
 -   **Scheduling:** Uses `APScheduler` to reliably schedule the Adhan and other actions.
 -   **Audio Playback:** Plays the Adhan audio file at the scheduled times.
@@ -17,32 +13,55 @@ It is designed to run as a background service on Linux desktops (specifically te
 ## Prequests
 Python 3 must be installed on your machine
 
-## Quick Setup (Recommended)
+## Installation
 
-To get Prayer Player up and running quickly on your system, use the provided setup script:
+### For End-Users (Recommended)
 
+For the easiest installation, download the pre-built installer for your operating system from the [releases page](https://github.com/your-repo/prayer-player/releases) (replace with actual releases URL). These installers handle all dependencies and system integration, including setting up the application to run at startup.
+
+### For Developers and Advanced Users (Manual Setup)
+
+If you want to run Prayer Player from source or contribute to its development, follow these steps:
+
+#### Prerequisites
+Python 3 must be installed on your machine.
+
+#### Setup
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/your-repo/prayer
+    cd prayer
+    ```
+2.  **Run the installer script:**
+    ```bash
+    python installer.py
+    ```
+    This script will create a virtual environment, install all necessary Python dependencies, and run tests to verify the setup.
+
+#### Running the Application
+
+After installation, you can run the application from the project root:
+
+**Linux/macOS:**
 ```bash
-python setup_gui.py
+./myenv/bin/prayer-player
 ```
 
-This script will guide you through setting up the Python environment, installing dependencies, and configuring the application. The GUI allows you to set your city and country, and also to configure the application to run at startup.
-
----
-
-
-### 2. Test the Script Manually
-
-Before creating a service, test the application from your terminal to ensure it's working correctly.
-
+**Windows:**
 ```bash
-prayer-player --city "Your City" --country "Your Country"
+.\myenv\Scripts\prayer-player.exe
 ```
+
+The application will start with a system tray icon. Right-click the icon to access Settings and configure your location, prayer calculation methods, and Google Calendar integration. You can also configure the application to run at startup from within the Settings window.
 
 ---
 
 ## Configuration
 
-You can configure the application using command-line arguments.
+The application is primarily configured through its graphical user interface (GUI) accessible via the system tray icon.
+
+For advanced use cases, the `prayer-player` executable also supports command-line arguments:
 
 | Argument      | Description                                                                                             | Default       | Example                               |
 | :------------ | :------------------------------------------------------------------------------------------------------ | :------------ | :------------------------------------ |
@@ -59,9 +78,11 @@ You can configure the application using command-line arguments.
 
 ## Calendar Integration
 
-The application can integrate with your Google or Microsoft calendar to automatically find available slots for prayers and create events.
+The application can integrate with your Google or Microsoft calendar to automatically find available slots for prayers and create events. This is configured via the application's Settings GUI.
 
-### Setup
+### Manual Setup (if not using GUI)
+
+If you need to set up calendar integration without using the GUI (e.g., for headless environments or troubleshooting), you can follow these steps:
 
 1.  **Choose your provider:** Decide whether you want to use Google Calendar or Microsoft Calendar.
 2.  **Obtain Credentials:**
@@ -79,35 +100,12 @@ The application can integrate with your Google or Microsoft calendar to automati
 
 ---
 
-## Running as a Background Service
-
-To ensure Prayer Player runs continuously in the background, you can set it up as a system service on your operating system.
-
-### Linux (systemd User Service)
-
-This is the recommended method for Linux distributions using systemd (e.g., Ubuntu, Fedora).
-
-
-1.  **Managing the Service:**
-    -   **Restart after code changes:** `systemctl --user restart prayer-player.service`
-    -   **Stop the service:** `systemctl --user stop prayer-player.service`
-    -   **Disable automatic startup:** `systemctl --user disable prayer-player.service`
-    -   **Check logs:**  
-        View recent logs with:  
-        ```bash
-        journalctl --user-unit prayer-player.service --since "1 hour ago"
-        ```
-        Or follow logs in real time:  
-        ```bash
-        journalctl --user-unit prayer-player.service -f
-        ```
-
 ## Uninstallation
 
-To remove the Prayer Player application and all related files, use the provided uninstaller script:
+To remove the Prayer Player application and all related files (for manual/developer setups), use the provided uninstaller script:
 
 ```bash
 python uninstall.py
 ```
 
-This script will stop any running background services, remove the service configurations, and delete the virtual environment and configuration files.
+This script will remove the virtual environment and configuration files. If you installed via a standalone installer, please use your operating system's standard uninstallation method (e.g., "Add or Remove Programs" on Windows, dragging to Trash on macOS).

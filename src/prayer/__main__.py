@@ -16,6 +16,15 @@ def duaa_path():
         return str(p)
 
 def main(argv: list[str] | None = None):
+    # If no command-line arguments are provided, launch the default GUI tray mode.
+    if not argv:
+        from . import tray_icon
+        tray_icon.setup_tray_icon()
+        return
+
+    # If arguments are present, proceed with CLI mode.
+    args = parse_args(argv)
+
     # Check if config exists, if not, run setup GUI
     config = load_config()
     if not config.get('city') or not config.get('country'):
@@ -29,7 +38,6 @@ def main(argv: list[str] | None = None):
             LOG.error("Configuration is still missing after setup. Exiting.")
             return
 
-    args = parse_args(argv)
     if args.install_service:
         from prayer.platform.service import ServiceManager
         service_manager = ServiceManager(
