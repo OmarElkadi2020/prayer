@@ -21,3 +21,4 @@ pystray
 pystray
 Pillow
 google-api-python-client
+appdirs

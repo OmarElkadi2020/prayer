@@ -8,6 +8,7 @@ import argcomplete
 from datetime import timedelta
 from zoneinfo import ZoneInfo
 from importlib import resources
+from appdirs import user_config_dir
 
 def adhan_path():
     with resources.path('prayer.assets', 'adhan.wav') as p:
@@ -22,9 +23,10 @@ POST_DELAY   = timedelta(minutes=5)
 FOCUS_DELAY  = timedelta(minutes=4)
 FOCUS_LENGTH = timedelta(minutes=10)
 
-# Determine the project root dynamically
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-CONFIG_DIR = os.path.join(PROJECT_ROOT, 'src', 'prayer', 'config')
+APP_NAME = "PrayerPlayer"
+APP_AUTHOR = "Omar"
+
+CONFIG_DIR = user_config_dir(APP_NAME, APP_AUTHOR)
 CONFIG_FILE_PATH = os.path.join(CONFIG_DIR, 'config.json')
 
 def load_config():

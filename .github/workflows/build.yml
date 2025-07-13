@@ -62,6 +62,7 @@ jobs:
           --hidden-import "prayer.gui" \
           --hidden-import "prayer.state" \
           --hidden-import "prayer.tray_icon" \
+          --hidden-import "json" \
           src/prayer/__main__.py
 
     # NEW STEP: Test application startup (dry run)
