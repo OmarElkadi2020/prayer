@@ -42,20 +42,18 @@ def test_duaa_path_failure(mocker):
     mock_log.assert_called_once_with("Duaa audio file not found.")
 
 @patch('prayer.scheduler.play')
-def test_play_adhan_wrapper(mock_play):
-    """Test the play_adhan action wrapper."""
-    scheduler = PrayerScheduler("test_cmd")
-    scheduler.play_adhan("specific_command")
-    mock_play.assert_called_once_with("specific_command")
-
-@patch('prayer.scheduler.play')
-def test_play_duaa_wrapper(mock_play, mocker):
-    """Test the play_duaa action wrapper."""
+@patch('time.sleep')
+def test_play_adhan_and_duaa_wrapper(mock_sleep, mock_play, mocker):
+    """Test the play_adhan_and_duaa action wrapper."""
     mocker.patch('prayer.scheduler.duaa_path', return_value="path/to/duaa.wav")
     scheduler = PrayerScheduler("test_cmd")
-    scheduler.play_duaa()
-    expected_cmd = "path/to/duaa.wav"
-    mock_play.assert_called_once_with(expected_cmd)
+    scheduler.play_adhan_and_duaa("specific_command")
+    
+    mock_play.assert_has_calls([
+        call("specific_command"),
+        call("path/to/duaa.wav")
+    ])
+    mock_sleep.assert_called_once_with(173)
 
 @patch('prayer.scheduler.focus_mode')
 def test_trigger_focus_mode_wrapper(mock_focus_mode):

@@ -94,11 +94,7 @@ def main(argv: list[str] | None = None):
             id="dry-run-focus"
         )
 
-        # 3. Schedule Duaa
-        pray_sched.scheduler.add_job(
-            pray_sched.play_duaa, "date", run_date=duaa_time,
-            id="dry-run-duaa"
-        )
+        
         
         # Run the scheduler for the dry run
         LOG.info("Dry run setup complete. Scheduler would have started here.")

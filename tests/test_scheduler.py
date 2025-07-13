@@ -70,8 +70,8 @@ def test_refresh_schedules_all_jobs_correctly(scheduler: PrayerScheduler, mock_d
     """
     scheduler.refresh(city="TestCity", country="TestCountry", method=3, school=0)
 
-    # 5 main prayers * 3 jobs each (adhan, duaa, focus) + 1 daily refresh job
-    expected_job_count = (5 * 3) + 1
+    # 5 main prayers * 2 jobs each (adhan_and_duaa, focus) + 1 daily refresh job
+    expected_job_count = (5 * 2) + 1
     assert mock_dependencies.add_job.call_count == expected_job_count
 
     # Check that the daily refresh job is scheduled correctly using kwargs
@@ -88,8 +88,7 @@ def test_refresh_schedules_all_jobs_correctly(scheduler: PrayerScheduler, mock_d
     # Verify that jobs are scheduled for a specific prayer (e.g., Fajr)
     fajr_time = mock_prayer_times["Fajr"]
     expected_fajr_calls = [
-        call(scheduler.play_adhan, "date", run_date=fajr_time, id=f"adhan-Fajr-{fajr_time:%Y%m%d%H%M}", args=[scheduler.audio_path], misfire_grace_time=None),
-        call(scheduler.play_duaa, "date", run_date=fajr_time + timedelta(minutes=2, seconds=53), id=f"duaa-Fajr-{fajr_time:%Y%m%d%H%M}"),
+        call(scheduler.play_adhan_and_duaa, "date", run_date=fajr_time, id=f"prayer-Fajr-{fajr_time:%Y%m%d%H%M}", args=[scheduler.audio_path], misfire_grace_time=None),
         call(scheduler.trigger_focus_mode, "date", run_date=fajr_time + timedelta(minutes=4), id=f"focus-Fajr-{fajr_time:%Y%m%d%H%M}"),
     ]
     mock_dependencies.add_job.assert_has_calls(expected_fajr_calls, any_order=True)
@@ -107,8 +106,8 @@ def test_refresh_skips_past_prayer_times(scheduler: PrayerScheduler, mock_depend
 
     scheduler.refresh(city="Any", country="Any")
 
-    # Only Dhuhr jobs (3) and the daily refresh (1) should be scheduled.
-    assert mock_dependencies.add_job.call_count == (1 * 3) + 1
+    # Only Dhuhr jobs (2) and the daily refresh (1) should be scheduled.
+    assert mock_dependencies.add_job.call_count == (1 * 2) + 1
 
     # Verify no job IDs containing "Fajr" were added
     for job_call in mock_dependencies.add_job.call_args_list:
@@ -142,8 +141,8 @@ def test_schedule_day_skips_non_prayer_times(scheduler: PrayerScheduler, mock_de
     # The mock_prayer_times includes 8 entries, but only 5 are main prayers.
     scheduler._schedule_day(mock_prayer_times)
 
-    # Should only schedule jobs for the 5 main prayers (5 * 3 = 15)
-    assert mock_dependencies.add_job.call_count == 15
+    # Should only schedule jobs for the 5 main prayers (5 * 2 = 10)
+    assert mock_dependencies.add_job.call_count == 10
 
     # Verify that no jobs for the skipped times were added
     for job_call in mock_dependencies.add_job.call_args_list:
@@ -179,9 +178,10 @@ def test_schedule_day_skips_if_already_in_calendar(scheduler: PrayerScheduler, m
     # No jobs should be added if the calendar blocks can't be created
     assert mock_dependencies.add_job.call_count == 0
 
-def test_play_duaa_is_silent_if_path_is_missing(scheduler: PrayerScheduler, mocker):
+def test_play_adhan_and_duaa_handles_missing_duaa_path(scheduler: PrayerScheduler, mocker):
     """
-    Verify that the duaa is not played if the audio file path is not found.
+    Verify that the duaa is not played if the audio file path is not found,
+    but adhan still plays.
     """
     # Mock duaa_path to return an empty string, simulating a missing file
     mocker.patch("prayer.scheduler.duaa_path", return_value="")
@@ -189,7 +189,7 @@ def test_play_duaa_is_silent_if_path_is_missing(scheduler: PrayerScheduler, mock
 
     # Re-initialize the scheduler to pick up the new mock
     s = PrayerScheduler("test_cmd")
-    s.play_duaa()
+    s.play_adhan_and_duaa("some_adhan_path")
 
-    # Assert that the underlying 'play' function was not called
-    mock_play.assert_not_called()
+    # Assert that the underlying 'play' function was called exactly once (for adhan)
+    mock_play.assert_called_once_with("some_adhan_path")
