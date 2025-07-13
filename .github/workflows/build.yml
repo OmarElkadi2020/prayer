@@ -40,55 +40,7 @@ jobs:
     # This step runs for all operating systems, but the path separator for --add-data
     # is different between Windows (;) and Unix-based systems (:).
     - name: Build application executable
-      shell: bash
-      run: |
-        # Use a semicolon as a path separator for Windows.
-        if [[ "${{ runner.os }}" == "Windows" ]]; then
-          SEPARATOR=";"
-        # Use a colon for macOS and Linux.
-        else
-          SEPARATOR=":"
-        fi
-
-        pyinstaller --noconfirm --onefile --windowed \
-        --name "PrayerPlayer" \
-        --icon "src/prayer/assets/mosque.png" \
-        --add-data "src/prayer/assets:prayer/assets" \
-        --add-data "src/prayer/config:prayer/config" \
-        --hidden-import "prayer.auth" \
-        --hidden-import "prayer.calendar_api" \
-        --hidden-import "prayer.config" \
-        --hidden-import "prayer.platform" \
-        --hidden-import "prayer.gui" \
-        --hidden-import "prayer.state" \
-        --hidden-import "prayer.tray_icon" \
-        --hidden-import "json" \
-        --hidden-import "argcomplete" \
-        --hidden-import "zoneinfo" \
-        --hidden-import "appdirs" \
-        --hidden-import "prayer.scheduler" \
-        --hidden-import "prayer.actions" \
-        --hidden-import "prayer.tray_icon" \
-        --hidden-import "prayer.gui" \
-        --hidden-import "prayer.platform.service" \
-        --hidden-import "APScheduler" \
-        --hidden-import "python_vlc" \
-        --hidden-import "keyring" \
-        --hidden-import "tzlocal" \
-        --hidden-import "pystray" \
-        --hidden-import "PySide6.QtSvg" \
-        --hidden-import "PySide6.QtNetwork" \
-        --hidden-import "PySide6.QtWidgets" \
-        --hidden-import "requests" \
-        --hidden-import "ics" \
-        --hidden-import "schedule" \
-        --hidden-import "google_api_python_client" \
-        --hidden-import "google_auth_httplib2" \
-        --hidden-import "google_auth_oauthlib" \
-        --hidden-import "msgraph_sdk" \
-        --hidden-import "playsound" \
-        --hidden-import "PySide6" \
-        src/prayer/__main__.py
+      run: pyinstaller --noconfirm PrayerPlayer.spec
 
     # NEW STEP: Test application startup (dry run)
     - name: Test application startup (dry run)

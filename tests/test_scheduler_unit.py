@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch, mock_open, call
 from prayer.scheduler import PrayerScheduler, duaa_path
 from prayer.config import TZ
 from datetime import datetime
