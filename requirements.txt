@@ -4,7 +4,6 @@ charset-normalizer==3.4.2
 idna==3.10
 requests
 ics
-python-vlc
 schedule
 google-api-python-client
 google-auth-httplib2
@@ -17,9 +16,6 @@ argcomplete==3.3.0
 PySide6
 playsound==1.2.2
 pytest
-pystray
-pystray
 Pillow
-google-api-python-client
 appdirs
 
