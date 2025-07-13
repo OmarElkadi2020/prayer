@@ -142,11 +142,23 @@ jobs:
           "dist/PrayerPlayer.dmg" \
           "dist/PrayerPlayer.app"
 
-    - name: Upload Artifact
+    - name: Upload Windows Artifact
+      if: matrix.os == 'windows-latest'
       uses: actions/upload-artifact@v4
       with:
-        name: prayer-player-${{ matrix.os }}
-        path: |
-          dist/*.dmg
-          dist/*.deb
-          deployment/windows/Output/*.exe
+        name: prayer-player-windows
+        path: deployment/windows/Output/*.exe
+
+    - name: Upload Ubuntu Artifact
+      if: matrix.os == 'ubuntu-20.04'
+      uses: actions/upload-artifact@v4
+      with:
+        name: prayer-player-ubuntu
+        path: dist/*.deb
+
+    - name: Upload macOS Artifact
+      if: matrix.os == 'macos-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: prayer-player-macos
+        path: dist/*.dmg
