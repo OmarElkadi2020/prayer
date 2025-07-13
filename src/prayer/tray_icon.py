@@ -1,11 +1,14 @@
-import pystray
-from PIL import Image, ImageDraw
 import sys
 import threading
 import time
 from importlib import resources
-from PySide6.QtWidgets import QApplication, QMessageBox
-from PySide6.QtCore import QTimer
+
+from PySide6.QtWidgets import QApplication, QMessageBox, QSystemTrayIcon, QMenu
+from PySide6.QtGui import QIcon, QAction, QPixmap
+from PySide6.QtCore import QTimer, QObject, Signal
+
+from PIL import Image, ImageDraw
+from PIL.ImageQt import ImageQt
 
 from prayer import gui, focus_steps, scheduler, config
 from prayer.state import state_manager, AppState
@@ -29,14 +32,13 @@ if not BASE_ICON_PATH:
     print("Error: Could not find 'mosque.png'. The application cannot start.")
     sys.exit(1)
 
-def create_icon(base_path, state: AppState):
-    """Creates a dynamic icon by adding a colored dot to the base image."""
+def create_q_icon(base_path, state: AppState):
+    """Creates a dynamic QIcon by adding a colored dot to the base image."""
     try:
-        image = Image.open(base_path).convert("RGBA")
+        pil_image = Image.open(base_path).convert("RGBA")
         if state != AppState.IDLE:
-            draw = ImageDraw.Draw(image)
-            # Position and size of the dot
-            width, height = image.size
+            draw = ImageDraw.Draw(pil_image)
+            width, height = pil_image.size
             dot_radius = width // 6
             dot_pos = (width - dot_radius * 2, height - dot_radius * 2)
             
@@ -51,12 +53,42 @@ def create_icon(base_path, state: AppState):
                 fill=color,
                 outline="white"
             )
-        return image
+        
+        # Convert PIL image to QPixmap for use in QIcon
+        qimage = ImageQt(pil_image)
+        pixmap = QPixmap.fromImage(qimage)
+        return QIcon(pixmap)
+        
     except FileNotFoundError:
-        # Return a placeholder if the base icon is missing
-        return Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+        # Return a placeholder QIcon if the base icon is missing
+        pixmap = QPixmap(64, 64)
+        pixmap.fill(Qt.transparent)
+        return QIcon(pixmap)
 
-ICONS = {state: create_icon(BASE_ICON_PATH, state) for state in AppState}
+# ICONS will be initialized inside setup_tray_icon after QApplication is created.
+ICONS = {}
+
+# --- GUI Thread Safety ---
+# Use a QObject with a signal to safely update the GUI from a background thread.
+class IconUpdater(QObject):
+    update_icon_signal = Signal(QIcon)
+
+    def __init__(self, tray_icon):
+        super().__init__()
+        self.tray_icon = tray_icon
+        self.update_icon_signal.connect(self.tray_icon.setIcon)
+
+    def run(self):
+        """
+        This function runs in a loop in a separate thread to keep the tray icon
+        updated based on the global state.
+        """
+        while True: # The thread will be a daemon, so it will exit with the app
+            current_state = state_manager.state
+            new_icon = ICONS.get(current_state, ICONS[AppState.IDLE])
+            if new_icon:
+                self.update_icon_signal.emit(new_icon)
+            time.sleep(ICON_UPDATE_INTERVAL)
 
 def run_in_qt_thread(target_func):
     """Decorator to ensure a function runs in the Qt GUI thread."""
@@ -64,8 +96,9 @@ def run_in_qt_thread(target_func):
         QTimer.singleShot(0, lambda: target_func(*args, **kwargs))
     return wrapper
 
+# --- Menu Actions ---
 @run_in_qt_thread
-def show_settings():
+def show_settings(checked=False):
     """Creates and shows the settings window."""
     global settings_window
     if settings_window is None or not settings_window.isVisible():
@@ -76,7 +109,7 @@ def show_settings():
         settings_window.activateWindow()
 
 @run_in_qt_thread
-def start_focus_mode():
+def start_focus_mode(checked=False):
     """Creates and shows the focus steps window."""
     global focus_window
     if focus_window is None or not focus_window.isVisible():
@@ -86,65 +119,65 @@ def start_focus_mode():
     else:
         focus_window.activateWindow()
 
-def sync_calendar():
+@run_in_qt_thread
+def sync_calendar(checked=False):
     """Triggers a manual, one-time sync of the calendar."""
     print("Manual calendar sync triggered from tray icon.")
     scheduler.run_scheduler_in_thread(one_time_run=True)
 
 @run_in_qt_thread
-def check_for_updates():
+def check_for_updates(checked=False):
     """Placeholder for checking for new application updates."""
     QMessageBox.information(None, "Check for Updates", "You are currently running the latest version.")
 
-def quit_action(icon):
-    """Stops the tray icon and quits the application."""
+@run_in_qt_thread
+def quit_app(checked=False):
+    """Safely quits the QApplication."""
     print("Quit action triggered.")
-    icon.stop()
     QApplication.instance().quit()
-
-def update_tray_status(icon):
-    """
-    This function runs in a loop in a separate thread to keep the tray icon
-    and its menu text updated based on the global state.
-    """
-    while icon.visible:
-        # Update Icon
-        current_state = state_manager.state
-        icon.icon = ICONS.get(current_state, ICONS[AppState.IDLE])
-
-        # pystray menu items are tuples, so we have to rebuild the menu to update text
-        new_menu = pystray.Menu(
-            pystray.MenuItem('Settings...', show_settings),
-            pystray.MenuItem('Quit', lambda: quit_action(icon))
-        )
-        icon.menu = new_menu
-        
-        time.sleep(ICON_UPDATE_INTERVAL)
 
 def setup_tray_icon():
     """
-    Initializes the QApplication and the system tray icon, and starts the main event loop.
+    Initializes the QApplication and the system tray icon using PySide6.
     """
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
 
-    # Initial menu setup
-    initial_menu = pystray.Menu(
-        pystray.MenuItem('Settings...', show_settings),
-        pystray.MenuItem('Quit', lambda: quit_action(icon))
-    )
-    icon = pystray.Icon("prayer_player", ICONS[AppState.IDLE], "Prayer Player", initial_menu)
+    # Initialize icons after QApplication is created.
+    global ICONS
+    ICONS = {state: create_q_icon(BASE_ICON_PATH, state) for state in AppState}
 
-    # Run pystray in its own thread
-    icon_thread = threading.Thread(target=icon.run, daemon=True)
-    icon_thread.start()
+    # Create the tray icon and menu
+    tray_icon = QSystemTrayIcon(ICONS[AppState.IDLE], app)
+    tray_icon.setToolTip("Prayer Player")
+    
+    menu = QMenu()
+    
+    # --- Menu Actions ---
+    settings_action = QAction("Settings...", triggered=show_settings)
+    focus_action = QAction("Start Focus Mode", triggered=start_focus_mode)
+    sync_action = QAction("Sync Calendar", triggered=sync_calendar)
+    update_action = QAction("Check for Updates...", triggered=check_for_updates)
+    quit_action = QAction("Quit", triggered=quit_app)
+    
+    menu.addAction(settings_action)
+    menu.addAction(focus_action)
+    menu.addAction(sync_action)
+    menu.addAction(update_action)
+    menu.addSeparator()
+    menu.addAction(quit_action)
+    
+    tray_icon.setContextMenu(menu)
+    tray_icon.show()
 
-    # Start the status updater thread
-    status_thread = threading.Thread(target=update_tray_status, args=(icon,), daemon=True)
+    # --- Background Threads ---
+    # Start the icon updater thread
+    icon_updater = IconUpdater(tray_icon)
+    status_thread = threading.Thread(target=icon_updater.run, daemon=True)
     status_thread.start()
 
-    # Start the main prayer time scheduler loop in a separate thread after the GUI is ready
-    QTimer.singleShot(0, scheduler.run_scheduler_in_thread)
+    # Start the main prayer time scheduler loop
+    scheduler.run_scheduler_in_thread()
 
     # On first run, if config is missing, show settings
     current_config = config.load_config()
@@ -152,7 +185,4 @@ def setup_tray_icon():
         print("Configuration not found, showing settings window.")
         show_settings()
 
-    sys.exit(app.exec())
-
-if __name__ == '__main__':
-    setup_tray_icon()
+    return app.exec()

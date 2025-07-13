@@ -15,12 +15,11 @@ def duaa_path():
     with resources.path('prayer.assets', 'duaa_after_adhan.wav') as p:
         return str(p)
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> int:
     # If no command-line arguments are provided, launch the default GUI tray mode.
     if not argv:
         from prayer import tray_icon
-        tray_icon.setup_tray_icon()
-        return
+        return tray_icon.setup_tray_icon()
 
     # If arguments are present, proceed with CLI mode.
     args = parse_args(argv)
@@ -36,7 +35,7 @@ def main(argv: list[str] | None = None):
         config = load_config()
         if not config.get('city') or not config.get('country'):
             LOG.error("Configuration is still missing after setup. Exiting.")
-            return
+            return 1
 
     if args.install_service:
         from prayer.platform.service import ServiceManager
@@ -51,11 +50,12 @@ def main(argv: list[str] | None = None):
             LOG.info("Service installed and enabled successfully.")
         except Exception as e:
             LOG.error(f"Failed to install or enable service: {e}")
-        return
+            return 1
+        return 0
     if args.setup_calendar:
         from prayer.gui import main as setup_main
         setup_main()
-        return
+        return 0
     
     audio_path = args.audio
 
@@ -103,7 +103,7 @@ def main(argv: list[str] | None = None):
         except (KeyboardInterrupt, SystemExit):
             LOG.info("Dry run exit.")
         
-        return # Exit after the dry run
+        return 0 # Exit after the dry run
 
     
 
@@ -112,7 +112,9 @@ def main(argv: list[str] | None = None):
             pray_sched.run()
         except (KeyboardInterrupt, SystemExit):
             LOG.info("Exit.")
+    
+    return 0
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    sys.exit(main(sys.argv[1:]))
