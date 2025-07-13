@@ -105,7 +105,16 @@ jobs:
         cp src/prayer/assets/mosque.png prayer-player-deb/usr/share/icons/hicolor/256x256/apps/prayer-player.png
 
         # Build the Debian package
-        dpkg-deb --build prayer-player-deb dist/prayer-player-1.0.0-amd64.deb
+        set -x
+        chmod -R 755 prayer-player-deb
+        ls -l prayer-player-deb/
+        ls -l prayer-player-deb/usr/local/bin/
+        dpkg-deb --build prayer-player-deb
+        echo "dpkg-deb exit code: $?"
+        ls -l
+        mv prayer-player-deb.deb dist/prayer-player-1.0.0-amd64.deb
+        ls -l dist/
+        set +x
 
     - name: Build and package the macOS application
       if: matrix.os == 'macos-latest'
