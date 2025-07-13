@@ -64,15 +64,6 @@ jobs:
         --hidden-import "prayer.tray_icon" \
         src/prayer/__main__.py
 
-        # Move the built executable to the dist folder.
-        if [[ "${{ runner.os }}" == "Windows" ]]; then
-          mv dist/PrayerPlayer.exe dist/
-        elif [[ "${{ runner.os }}" == "Linux" ]]; then
-          mv dist/PrayerPlayer dist/
-        elif [[ "${{ runner.os }}" == "macOS" ]]; then
-          mv dist/PrayerPlayer.app dist/
-        fi
-
     # NEW STEP: Test application startup (dry run)
     - name: Test application startup (dry run)
       shell: bash
