@@ -67,5 +67,11 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['src/prayer/assets/mosque.png'],
+)
+
+app = BUNDLE(
+    exe,
+    name='PrayerPlayer.app',
+    icon='src/prayer/assets/mosque.png',
+    bundle_identifier=None,
 )
