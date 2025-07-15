@@ -10,7 +10,7 @@ import time
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from .config import TZ, BUSY_SLOT, FOCUS_DELAY, LOG, load_config, adhan_path
+from .config import TZ, BUSY_SLOT, FOCUS_DELAY, LOG, load_config, adhan_path, get_asset_path
 from .calendar_utils import first_free_gap, add_busy_block
 from .prayer_times import today_times
 from .actions import play, focus_mode
@@ -19,8 +19,7 @@ from .state import state_manager, AppState
 def duaa_path() -> str:
     """Safely retrieves the path to the duaa audio file."""
     try:
-        with resources.path('prayer.assets', 'duaa_after_adhan.wav') as p:
-            return str(p)
+        return str(get_asset_path('duaa_after_adhan.wav'))
     except FileNotFoundError:
         LOG.error("Duaa audio file not found.")
         return ""

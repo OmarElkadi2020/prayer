@@ -6,6 +6,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from appdirs import user_data_dir
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 SCOPES = ['https://www.googleapis.com/auth/calendar', 'https://www.googleapis.com/auth/userinfo.email', 'openid']
 
@@ -23,17 +24,15 @@ else:
     # and the project root is 4 levels up from this file.
     BASE_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-# Path for bundled credentials.json (read-only)
-BUNDLED_CONFIG_DIR = os.path.join(BASE_PATH, 'prayer', 'config')
-
-# Path for user-specific token.json (read/write)
-TOKEN_DIR = user_data_dir(APP_NAME, APP_AUTHOR)
-TOKEN_FILE = os.path.join(TOKEN_DIR, 'token.json')
+# Path for user-specific, writable config files
+USER_CONFIG_DIR = user_data_dir(APP_NAME, APP_AUTHOR)
+TOKEN_FILE = os.path.join(USER_CONFIG_DIR, 'token.json')
+CREDENTIALS_FILE = os.path.join(USER_CONFIG_DIR, 'credentials.json')
 
 def get_google_credentials(reauthenticate=False):
     creds = None
-    # Ensure TOKEN_DIR exists before trying to read/write token.json
-    os.makedirs(TOKEN_DIR, exist_ok=True)
+    # Ensure the user config directory exists.
+    os.makedirs(USER_CONFIG_DIR, exist_ok=True)
 
     if reauthenticate and os.path.exists(TOKEN_FILE):
         os.remove(TOKEN_FILE)
@@ -47,12 +46,33 @@ def get_google_credentials(reauthenticate=False):
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                os.path.join(BUNDLED_CONFIG_DIR, 'credentials.json'), SCOPES)
+            # Check if the credentials file exists in the user's config directory.
+            # If not, the user needs to place it there manually.
+            if not os.path.exists(CREDENTIALS_FILE):
+                print(f"ERROR: 'credentials.json' not found.")
+                print(f"Please place your Google API credentials file at: {CREDENTIALS_FILE}")
+                # In a GUI context, you would show a dialog here.
+                # For now, we exit if run in a context without a GUI parent.
+                if QApplication.instance() is None:
+                    sys.exit(1)
+                else:
+                    # If a GUI is running, show an error message.
+                    QMessageBox.critical(
+                        None, 
+                        "Credentials Not Found",
+                        f"'credentials.json' not found.\n\nPlease place your Google API credentials file at:\n{CREDENTIALS_FILE}"
+                    )
+                    return None
+
+            flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
             creds = flow.run_local_server(port=0)
+        
+        # Save the new token
         with open(TOKEN_FILE, 'w') as token:
             token.write(creds.to_json())
+            
     return creds
+
 
 def get_user_info(creds):
     """Fetches user info using the provided credentials."""

@@ -71,23 +71,17 @@ ICONS = {}
 # --- GUI Thread Safety ---
 # Use a QObject with a signal to safely update the GUI from a background thread.
 class IconUpdater(QObject):
-    update_icon_signal = Signal(QIcon)
-
-    def __init__(self, tray_icon):
-        super().__init__()
-        self.tray_icon = tray_icon
-        self.update_icon_signal.connect(self.tray_icon.setIcon)
+    # Signal will emit the application's state, not a GUI object.
+    update_state_signal = Signal(AppState)
 
     def run(self):
         """
-        This function runs in a loop in a separate thread to keep the tray icon
-        updated based on the global state.
+        This function runs in a loop in a separate thread and emits the current
+        application state periodically.
         """
         while True: # The thread will be a daemon, so it will exit with the app
             current_state = state_manager.state
-            new_icon = ICONS.get(current_state, ICONS[AppState.IDLE])
-            if new_icon:
-                self.update_icon_signal.emit(new_icon)
+            self.update_state_signal.emit(current_state)
             time.sleep(ICON_UPDATE_INTERVAL)
 
 def run_in_qt_thread(target_func):
@@ -171,8 +165,16 @@ def setup_tray_icon():
     tray_icon.show()
 
     # --- Background Threads ---
+    # This slot will run on the main GUI thread.
+    def on_state_update(state):
+        new_icon = ICONS.get(state, ICONS[AppState.IDLE])
+        if new_icon:
+            tray_icon.setIcon(new_icon)
+
     # Start the icon updater thread
-    icon_updater = IconUpdater(tray_icon)
+    icon_updater = IconUpdater()
+    icon_updater.update_state_signal.connect(on_state_update)
+    
     status_thread = threading.Thread(target=icon_updater.run, daemon=True)
     status_thread.start()
 

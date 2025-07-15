@@ -91,10 +91,13 @@ def load_steps_from_file(file_path):
     
     return steps
 
-from prayer.config import get_asset_path
+from src.config.security import get_asset_path
 
 # --- Constants ---
 SOUND_PATH = get_asset_path('complete_sound.wav')
+ICON_PATH = get_asset_path('mosque.png')
+STEPS_FILE_PATH = str(resources.files('config').joinpath('steps_content.txt'))
+STEPS = load_steps_from_file(STEPS_FILE_PATH)
 
 
 
@@ -118,7 +121,7 @@ class StepWindow(QWidget):
         # --- Window Configuration ---
         self.setWindowTitle(APP_TITLE)
         if ICON_PATH:
-            self.setWindowIcon(QIcon(ICON_PATH))
+            self.setWindowIcon(QIcon(str(ICON_PATH)))
         
         # --- Dynamic Sizing Setup ---
         self.setMinimumWidth(WINDOW_WIDTH)

@@ -7,13 +7,12 @@ from __future__ import annotations
 import sys
 from importlib import resources
 
-from prayer.config import parse_args, LOG, TZ, load_config
+from prayer.config import parse_args, LOG, TZ, load_config, get_asset_path
 from prayer.scheduler import PrayerScheduler
 from prayer.actions import focus_mode, play
 
 def duaa_path():
-    with resources.path('prayer.assets', 'duaa_after_adhan.wav') as p:
-        return str(p)
+    return str(get_asset_path('duaa_after_adhan.wav'))
 
 def main(argv: list[str] | None = None) -> int:
     # If no command-line arguments are provided, launch the default GUI tray mode.

@@ -8,6 +8,17 @@ import argcomplete
 from datetime import timedelta
 from zoneinfo import ZoneInfo
 from importlib import resources
+
+def get_asset_path(filename):
+    """
+    Returns a path-like object for an asset in the 'prayer.assets' package.
+    This works for both development and PyInstaller-packaged modes.
+    """
+    return resources.files('prayer.assets').joinpath(filename)
+
+# --- Default Paths ---
+DEFAULT_ADHAN_PATH = str(get_asset_path('adhan.wav'))
+
 from appdirs import user_config_dir
 
 def adhan_path():
