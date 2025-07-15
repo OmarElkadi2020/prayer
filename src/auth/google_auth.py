@@ -53,15 +53,22 @@ def get_google_credentials(reauthenticate=False):
             # Check if the credentials file exists in the user's config directory or the project root.
             credentials_path = CREDENTIALS_FILE
             if not os.path.exists(credentials_path):
-                credentials_path = os.path.join(BASE_PATH, 'src', 'prayer', 'config', 'credentials.json')
+                credentials_path = os.path.join(BASE_PATH, 'src', 'config', 'security', 'credentials.json')
 
             if not os.path.exists(credentials_path):
                 message = f"'credentials.json' not found.\n\nPlease place your Google API credentials file at:\n{CREDENTIALS_FILE}"
                 raise CredentialsNotFoundError(message)
 
-            flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
-            creds = flow.run_local_server(port=0)
+            try:
+                flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
+                creds = flow.run_local_server(port=0)
+            except Exception as e:
+                raise CredentialsNotFoundError(f"Failed to obtain new credentials: {e}") from e
         
+        # If after all attempts, creds is still None or invalid, raise an error
+        if not creds or not creds.valid:
+            raise CredentialsNotFoundError("Could not obtain valid Google API credentials.")
+
         # Save the new token
         with open(TOKEN_FILE, 'w') as token:
             token.write(creds.to_json())

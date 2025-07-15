@@ -163,16 +163,20 @@ class PrayerScheduler:
                     LOG.debug(f"Skipping past prayer: {name} at {at.strftime('%H:%M')}")
                     continue
 
+                slot = at # Initialize slot with the prayer time
+
                 if self.calendar_service:
                     found_slot = self.calendar_service.find_first_available_slot(at, BUSY_SLOT.total_seconds() / 60)
                     if found_slot is None:
                         LOG.warning(f"Could not find a free calendar gap for {name} around {at.strftime('%H:%M')}")
                         continue
-                    slot = found_slot
+                    slot = found_slot # Update slot if a free slot is found
 
                     if not self.calendar_service.add_event(slot, name, BUSY_SLOT.total_seconds() / 60):
                         LOG.info(f"Skipping {name}, as it's already in the external calendar.")
                         continue
+                else:
+                    LOG.info(f"Calendar service is not active. Skipping calendar event for {name}.")
 
                 job_base_id = f"{name}-{slot.strftime('%Y%m%d%H%M')}"
 
@@ -230,6 +234,9 @@ def get_scheduler_instance(calendar_service: Optional[CalendarService] = None) -
         if _scheduler_instance is None:
             audio = adhan_path()
             _scheduler_instance = PrayerScheduler(audio_path=audio, calendar_service=calendar_service)
+        elif calendar_service is not None and _scheduler_instance.calendar_service is None:
+            # If scheduler already exists but calendar service wasn't set, set it now.
+            _scheduler_instance.calendar_service = calendar_service
     return _scheduler_instance
 
 def run_scheduler_in_thread(one_time_run: bool = False, calendar_service: Optional[CalendarService] = None, dry_run: bool = False):

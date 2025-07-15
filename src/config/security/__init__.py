@@ -49,7 +49,8 @@ def load_config():
         'school': 0,
         'enabled_prayers': ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"],
         'custom_audio_path': None,
-        'run_mode': 'background'
+        'run_mode': 'background',
+        'log_level': 'INFO'
     }
     if os.path.exists(CONFIG_FILE_PATH):
         try:

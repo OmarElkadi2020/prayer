@@ -15,8 +15,7 @@ class GoogleCalendarService(CalendarService):
     def __init__(self, creds):
         self.creds = creds
         self.service = None
-
-    
+        self.setup_credentials()
 
     def setup_credentials(self) -> None:
         try:
@@ -81,5 +80,28 @@ class GoogleCalendarService(CalendarService):
             
             if is_available:
                 return potential_start
+    
+    def add_event(self, start_time: datetime, summary: str, duration_minutes: int) -> bool:
+        """
+        Creates a busy calendar event.
+        """
+        slot_end = start_time + timedelta(minutes=duration_minutes)
+        
+        try:
+            # First, check if an event with the same summary already exists for that day
+            day_start = start_time.replace(hour=0, minute=0, second=0, microsecond=0)
+            day_end = day_start + timedelta(days=1)
+            events = self.get_events(day_start, day_end)
+            for event in events:
+                if event.get('summary', '').lower() == summary.lower():
+                    print(f"Event '{summary}' already exists in Calender for today. Skipping readding it.")
+                    return False
+
+            self.create_event(summary, start_time, slot_end, "Scheduled by Prayer App")
+            print(f"📅 Added busy block: {summary} at {start_time.strftime('%H:%M')}-{slot_end.strftime('%H:%M')}")
+            return True
+        except Exception as e:
+            print(f"Failed to add busy block: {e}")
+            return False
     
     

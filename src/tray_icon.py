@@ -2,6 +2,7 @@ import sys
 import threading
 import time
 from importlib import resources
+import logging # Added for logging
 
 from PySide6.QtWidgets import QApplication, QMessageBox, QSystemTrayIcon, QMenu
 from PySide6.QtGui import QIcon, QAction, QPixmap
@@ -11,9 +12,11 @@ from datetime import datetime, timedelta
 from PIL import Image, ImageDraw
 from PIL.ImageQt import ImageQt
 
-from src.config.security import load_config
+from src.config.security import load_config, LOG # Import LOG
 from src import gui, focus_steps, scheduler
 from src.state import state_manager, AppState
+from src.calendar_api.google_calendar import GoogleCalendarService # Added
+from src.auth.google_auth import get_google_credentials, CredentialsNotFoundError # Added
 
 # Globals
 settings_window = None
@@ -26,12 +29,12 @@ def get_asset_path(package, resource):
         with resources.path(package, resource) as p:
             return str(p)
     except (FileNotFoundError, ModuleNotFoundError):
-        print(f"Warning: Asset '{resource}' not found in package '{package}'.")
+        LOG.warning(f"Asset '{resource}' not found in package '{package}'.") # Changed to LOG.warning
         return ""
 
 BASE_ICON_PATH = get_asset_path('src.assets', 'mosque.png')
 if not BASE_ICON_PATH:
-    print("Error: Could not find 'mosque.png'. The application cannot start.")
+    LOG.error("Could not find 'mosque.png'. The application cannot start.") # Changed to LOG.error
     sys.exit(1)
 
 def create_q_icon(base_path, state: AppState):
@@ -89,7 +92,7 @@ class IconUpdater(QObject):
 def run_in_qt_thread(target_func):
     """Decorator to ensure a function runs in the Qt GUI thread."""
     def wrapper(*args, **kwargs):
-        print(f"[DEBUG] Scheduling {target_func.__name__} on Qt thread.")
+        LOG.debug(f"Scheduling {target_func.__name__} on Qt thread.") # Changed to LOG.debug
         QTimer.singleShot(0, lambda: target_func(*args, **kwargs))
     return wrapper
 
@@ -149,7 +152,7 @@ def run_gui_dry_run(checked=False):
 @run_in_qt_thread
 def sync_calendar(checked=False):
     """Triggers a manual, one-time sync of the calendar."""
-    print("Manual calendar sync triggered from tray icon.")
+    LOG.info("Manual calendar sync triggered from tray icon.") # Changed to LOG.info
     scheduler.run_scheduler_in_thread(one_time_run=True)
 
 @run_in_qt_thread
@@ -160,7 +163,7 @@ def check_for_updates(checked=False):
 @run_in_qt_thread
 def quit_app(checked=False):
     """Safely quits the QApplication."""
-    print("Quit action triggered from tray icon menu.")
+    LOG.info("Quit action triggered from tray icon menu.") # Changed to LOG.info
     QApplication.instance().quit()
 
 def setup_tray_icon():
@@ -213,13 +216,24 @@ def setup_tray_icon():
     status_thread = threading.Thread(target=icon_updater.run, daemon=True)
     status_thread.start()
 
-    # Start the main prayer time scheduler loop
-    scheduler.run_scheduler_in_thread()
+    # Initialize Calendar Service and pass to scheduler
+    calendar_service = None
+    try:
+        creds = get_google_credentials()
+        calendar_service = GoogleCalendarService(creds)
+        LOG.info("Google Calendar service initialized in tray icon setup.")
+    except CredentialsNotFoundError as e:
+        LOG.warning(f"Google Calendar credentials not found or invalid: {e}. Calendar integration will be disabled.")
+    except Exception as e:
+        LOG.error(f"Error initializing Google Calendar service: {e}. Calendar integration will be disabled.")
+
+    # Start the main prayer time scheduler loop, passing the calendar service
+    scheduler.run_scheduler_in_thread(calendar_service=calendar_service)
 
     # On first run, if config is missing, show settings
     current_config = load_config()
     if not current_config.get('city') or not current_config.get('country'):
-        print("Configuration not found, showing settings window.")
+        LOG.info("Configuration not found, showing settings window.") # Changed to LOG.info
         show_settings()
 
     return app.exec()

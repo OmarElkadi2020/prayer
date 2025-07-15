@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 import sys
+import logging
 from importlib import resources
 
 from src.config.security import parse_args, LOG, TZ, load_config, get_asset_path
@@ -18,6 +19,10 @@ def duaa_path():
 
 def main(argv: list[str] | None = None) -> int:
     argv = argv if argv is not None else [] # Ensure argv is always a list
+
+    # Load config to set initial logging level
+    initial_config = load_config()
+    LOG.setLevel(getattr(logging, initial_config.get('log_level', 'INFO').upper()))
 
     # If no command-line arguments are provided, launch the default GUI tray mode.
     # If --dry-run is present, do not launch the GUI.

@@ -257,8 +257,20 @@ class SettingsWindow(QWidget):
         link_label = QLabel("<a href='https://github.com/user/prayer-player'>Visit on GitHub</a>")
         link_label.setOpenExternalLinks(True)
         layout.addWidget(link_label, 6, 0)
+
+        # --- Log Level Setting ---
+        log_level_line = QFrame()
+        log_level_line.setFrameShape(QFrame.HLine)
+        log_level_line.setFrameShadow(QFrame.Sunken)
+        layout.addWidget(log_level_line, 7, 0, 1, 2)
+
+        layout.addWidget(QLabel("<b>Logging</b>"), 8, 0, 1, 2)
+        layout.addWidget(QLabel("Log Level:"), 9, 0)
+        self.log_level_combo = QComboBox()
+        self.log_level_combo.addItems(["DEBUG", "INFO", "WARNING", "ERROR"])
+        layout.addWidget(self.log_level_combo, 9, 1)
         
-        layout.setRowStretch(7, 1)
+        layout.setRowStretch(10, 1)
         layout.setColumnStretch(0, 1)
 
     def select_custom_audio(self):
@@ -295,6 +307,11 @@ class SettingsWindow(QWidget):
         if self.custom_audio_path:
             self.custom_audio_label.setText(os.path.basename(self.custom_audio_path))
         self.startup_checkbox.setChecked(self.service_manager.is_enabled())
+        
+        # Load log level
+        log_level = current_config.get('log_level', 'INFO')
+        self.log_level_combo.setCurrentText(log_level)
+
         self.update_status("Configuration loaded.")
 
     def save_and_close(self):
@@ -305,7 +322,8 @@ class SettingsWindow(QWidget):
             'school': self.school_combo.currentData(),
             'enabled_prayers': [name for name, cb in self.prayer_checkboxes.items() if cb.isChecked()],
             'custom_audio_path': getattr(self, 'custom_audio_path', None),
-            'google_calendar_id': self.calendar_combo.currentData()
+            'google_calendar_id': self.calendar_combo.currentData(),
+            'log_level': self.log_level_combo.currentText()
         }
         if not new_config['city'] or not new_config['country']:
             QMessageBox.warning(self, "Input Error", "Country and City must be selected.")
@@ -383,6 +401,7 @@ class SettingsWindow(QWidget):
 
         from src.calendar_api.google_calendar import GoogleCalendarService
         self.calendar_service = GoogleCalendarService(creds)
+        self.update_status("Google Calendar service initialized.", "green")
 
         user_info = google_auth.get_user_info(creds)
         self.google_user_label.setText(f"Authenticated as: {user_info.get('email', 'Unknown')}")
