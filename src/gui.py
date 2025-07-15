@@ -14,7 +14,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Signal, QObject, Qt
 from PySide6.QtGui import QDesktopServices
 
-from src.config.security import load_config, save_config, adhan_path
+import logging
+from src.config.security import load_config, save_config, adhan_path, LOG
 from src.auth import google_auth
 from src.platform.service import ServiceManager
 from src.actions import play
@@ -330,6 +331,7 @@ class SettingsWindow(QWidget):
             return
         try:
             save_config(**new_config)
+            LOG.setLevel(new_config['log_level']) # Update log level immediately
             self.update_status("Configuration saved successfully!", "green")
             if self.startup_checkbox.isChecked() != self.service_manager.is_enabled():
                 if self.startup_checkbox.isChecked():
