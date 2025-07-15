@@ -1,11 +1,13 @@
 # Prayer Player
-Prayer Player helps you stay consistent with your prayers by automating prayer time scheduling and reminders. It fetches accurate prayer times, plays the Adhan automatically, and can reserve time in your calendar so you never miss a prayer. Designed to run quietly in the background, it makes it easy to prioritize your daily prayers without manual effort.
+Prayer Player is an intelligent assistant that helps you seamlessly integrate your prayer routine into your busy schedule. By fetching accurate prayer times and intelligently arranging Adhan playback and focused prayer steps within your calendar's free slots, it ensures you never miss a prayer while maintaining work efficiency. Designed to run quietly in the background, Prayer Player automates scheduling and reminders, allowing you to prioritize your daily prayers without manual effort or disruption to your workflow.
 
 ## Feature
 -   **Automatic Prayer Times:** Fetches daily prayer times for any city using the aladhan.com API.
 -   **Scheduling:** Uses `APScheduler` to reliably schedule the Adhan and other actions.
 -   **Audio Playback:** Plays the Adhan audio file at the scheduled times.
--   **Calendar Integration:** (Optional) Can connect to your Google calendar to find free time slots and create busy events for prayers.
+    -   **Calendar Integration:** The calendar integration is more sophisticated: it's about intelligently arranging adhan and focus steps within free slots
+        identified within the broader prayer timespan in the user's calendar. This implies the application actively manages and optimizes the
+        scheduling of these events based on calendar availability.
 -   **Focus Mode:** Includes a "focus mode" that can be triggered around prayer times to minimize distractions.
 -   **Systemd Service:** Designed to be run as a systemd user service for automatic startup.
 
@@ -78,7 +80,7 @@ For advanced use cases, the `prayer-player` executable also supports command-lin
 
 ## Calendar Integration
 
-The application can integrate with your Google or Microsoft calendar to automatically find available slots for prayers and create events. This is configured via the application's Settings GUI.
+The application intelligently integrates with your Google or Microsoft calendar to find free slots within prayer timespans, and then arranges adhan and focus steps within these available slots. This active management and optimization of scheduling is configured via the application's Settings GUI.
 
 ### Manual Setup (if not using GUI)
 

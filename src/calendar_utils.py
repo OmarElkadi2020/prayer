@@ -7,22 +7,27 @@ from __future__ import annotations
 from datetime import datetime, date, time, timedelta
 from typing import Optional
 
-from .config import TZ, BUSY_SLOT, LOG
+from src.config.security import TZ, BUSY_SLOT, LOG
 from .calendar_api.base import CalendarService
 from .calendar_api.google_calendar import GoogleCalendarService
 # from .calendar_api.microsoft_calendar import MicrosoftCalendarService
 
-# In the future, this will be based on user configuration
+# Global variable to hold the calendar service instance
+_calendar_service: Optional[CalendarService] = None
+
+
 def get_calendar_service() -> Optional[CalendarService]:
     """
-    Returns the configured calendar service.
+    Returns the configured calendar service, initializing it if necessary.
     """
-    # For now, we'll default to Google Calendar
-    try:
-        return GoogleCalendarService()
-    except Exception as e:
-        LOG.error(f"Failed to initialize calendar service: {e}")
-        return None
+    global _calendar_service
+    if _calendar_service is None:
+        try:
+            _calendar_service = GoogleCalendarService()
+        except Exception as e:
+            LOG.error(f"Failed to initialize calendar service: {e}")
+            return None
+    return _calendar_service
 
 
 def first_free_gap(start: datetime, duration_minutes: int) -> Optional[datetime]:

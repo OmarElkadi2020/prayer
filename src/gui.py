@@ -14,10 +14,10 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Signal, QObject, Qt
 from PySide6.QtGui import QDesktopServices
 
-from prayer import config
-from prayer.auth import google_auth
-from prayer.platform.service import ServiceManager
-from prayer.actions import play
+from src.config.security import load_config, save_config, adhan_path
+from src.auth import google_auth
+from src.platform.service import ServiceManager
+from src.actions import play
 
 class Worker(QObject):
     """Worker object for running tasks in a separate thread."""
@@ -68,7 +68,11 @@ class Worker(QObject):
         try:
             creds = google_auth.get_google_credentials(reauthenticate=reauthenticate)
             self.google_auth_finished.emit(creds)
-            self.status_updated.emit("Google authentication successful!", "green")
+            if creds:
+                self.status_updated.emit("Google authentication successful!", "green")
+        except google_auth.CredentialsNotFoundError as e:
+            self.status_updated.emit(f"Google authentication failed: {e}", "red")
+            self.error.emit(str(e))
         except Exception as e:
             self.status_updated.emit(f"Google authentication failed: {e}", "red")
             self.error.emit(f"Failed to authenticate Google Calendar: {e}")
@@ -82,6 +86,7 @@ class SettingsWindow(QWidget):
         self.countries = []
         self.cities = []
         self.service_manager = ServiceManager("prayer-player", "Prayer Player", "A service to play prayer times.")
+        self.calendar_service = None
         self.init_ui()
         self.load_initial_config()
         self.load_countries()
@@ -264,7 +269,7 @@ class SettingsWindow(QWidget):
             self.update_status("Custom adhan sound selected.", "green")
 
     def test_audio(self):
-        audio_path = getattr(self, 'custom_audio_path', config.adhan_path())
+        audio_path = getattr(self, 'custom_audio_path', adhan_path())
         if audio_path and os.path.exists(audio_path):
             self.update_status(f"Testing sound: {os.path.basename(audio_path)}", "blue")
             play(audio_path)
@@ -276,7 +281,7 @@ class SettingsWindow(QWidget):
         self.status_label.setStyleSheet(f"color: {color};")
 
     def load_initial_config(self):
-        current_config = config.load_config()
+        current_config = load_config()
         self.country_combo.setEditText(current_config.get('country', ''))
         self.city_combo.setEditText(current_config.get('city', ''))
         method_index = self.method_combo.findData(current_config.get('method', 3))
@@ -306,7 +311,7 @@ class SettingsWindow(QWidget):
             QMessageBox.warning(self, "Input Error", "Country and City must be selected.")
             return
         try:
-            config.save_config(**new_config)
+            save_config(**new_config)
             self.update_status("Configuration saved successfully!", "green")
             if self.startup_checkbox.isChecked() != self.service_manager.is_enabled():
                 if self.startup_checkbox.isChecked():
@@ -315,8 +320,8 @@ class SettingsWindow(QWidget):
                 else:
                     self.service_manager.disable()
                     self.service_manager.uninstall()
-            from prayer.scheduler import run_scheduler_in_thread
-            run_scheduler_in_thread(one_time_run=True)
+            from src.scheduler import run_scheduler_in_thread
+            run_scheduler_in_thread(one_time_run=True, calendar_service=self.calendar_service)
             self.close()
         except Exception as e:
             self.update_status(f"Error saving config: {e}", "red")
@@ -333,14 +338,14 @@ class SettingsWindow(QWidget):
     def _on_countries_loaded(self, countries):
         self.countries = countries
         self.country_combo.addItems(self.countries)
-        current_config = config.load_config()
+        current_config = load_config()
         country = current_config.get('country')
         if country in self.countries:
             self.country_combo.setCurrentText(country)
-            self.on_country_select(country)
+            self.on_country_select()
 
-    def on_country_select(self, country_text=None):
-        selected_country = country_text or self.country_combo.currentText()
+    def on_country_select(self):
+        selected_country = self.country_combo.currentText()
         if selected_country:
             self.worker = Worker()
             self.thread = threading.Thread(target=self.worker.load_cities, args=(selected_country,), daemon=True)
@@ -354,7 +359,7 @@ class SettingsWindow(QWidget):
         self.city_combo.clear()
         self.city_combo.addItems(self.cities)
         self.city_combo.setEnabled(True)
-        current_config = config.load_config()
+        current_config = load_config()
         if current_config.get('country') == country:
             self.city_combo.setCurrentText(current_config.get('city', ''))
 
@@ -376,6 +381,9 @@ class SettingsWindow(QWidget):
             self.calendar_combo.setEnabled(False)
             return
 
+        from src.calendar_api.google_calendar import GoogleCalendarService
+        self.calendar_service = GoogleCalendarService(creds)
+
         user_info = google_auth.get_user_info(creds)
         self.google_user_label.setText(f"Authenticated as: {user_info.get('email', 'Unknown')}")
         
@@ -385,7 +393,7 @@ class SettingsWindow(QWidget):
             self.calendar_combo.addItem(cal['summary'], userData=cal['id'])
         self.calendar_combo.setEnabled(True)
 
-        current_config = config.load_config()
+        current_config = load_config()
         cal_id = current_config.get('google_calendar_id')
         if cal_id:
             index = self.calendar_combo.findData(cal_id)

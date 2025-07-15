@@ -6,7 +6,11 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from appdirs import user_data_dir
-from PySide6.QtWidgets import QApplication, QMessageBox
+
+
+class CredentialsNotFoundError(Exception):
+    pass
+
 
 SCOPES = ['https://www.googleapis.com/auth/calendar', 'https://www.googleapis.com/auth/userinfo.email', 'openid']
 
@@ -46,25 +50,16 @@ def get_google_credentials(reauthenticate=False):
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            # Check if the credentials file exists in the user's config directory.
-            # If not, the user needs to place it there manually.
-            if not os.path.exists(CREDENTIALS_FILE):
-                print(f"ERROR: 'credentials.json' not found.")
-                print(f"Please place your Google API credentials file at: {CREDENTIALS_FILE}")
-                # In a GUI context, you would show a dialog here.
-                # For now, we exit if run in a context without a GUI parent.
-                if QApplication.instance() is None:
-                    sys.exit(1)
-                else:
-                    # If a GUI is running, show an error message.
-                    QMessageBox.critical(
-                        None, 
-                        "Credentials Not Found",
-                        f"'credentials.json' not found.\n\nPlease place your Google API credentials file at:\n{CREDENTIALS_FILE}"
-                    )
-                    return None
+            # Check if the credentials file exists in the user's config directory or the project root.
+            credentials_path = CREDENTIALS_FILE
+            if not os.path.exists(credentials_path):
+                credentials_path = os.path.join(BASE_PATH, 'src', 'prayer', 'config', 'credentials.json')
 
-            flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
+            if not os.path.exists(credentials_path):
+                message = f"'credentials.json' not found.\n\nPlease place your Google API credentials file at:\n{CREDENTIALS_FILE}"
+                raise CredentialsNotFoundError(message)
+
+            flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
             creds = flow.run_local_server(port=0)
         
         # Save the new token

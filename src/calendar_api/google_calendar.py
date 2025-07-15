@@ -5,19 +5,24 @@ from typing import List, Dict, Any
 from googleapiclient.discovery import build
 
 from .base import CalendarService
-from prayer.auth.google_auth import get_google_credentials
+from src.auth.google_auth import get_google_credentials
 
 class GoogleCalendarService(CalendarService):
     """
     Google Calendar implementation of the CalendarService.
     """
 
-    def __init__(self):
-        self.creds = get_google_credentials()
-        self.service = build('calendar', 'v3', credentials=self.creds)
+    def __init__(self, creds):
+        self.creds = creds
+        self.service = None
 
-    def _get_credentials(self):
-        return get_google_credentials()
+    
+
+    def setup_credentials(self) -> None:
+        try:
+            self.service = build("calendar", "v3", credentials=self.creds)
+        except Exception as error:
+            print(f"An error occurred: {error}")
 
     def get_events(self, start_time: datetime, end_time: datetime) -> List[Dict[str, Any]]:
         events_result = self.service.events().list(
@@ -77,5 +82,4 @@ class GoogleCalendarService(CalendarService):
             if is_available:
                 return potential_start
     
-    def setup_credentials(self) -> None:
-        self._get_credentials()
+    
