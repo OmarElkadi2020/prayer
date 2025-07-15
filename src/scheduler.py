@@ -60,9 +60,6 @@ class PrayerScheduler:
             self._schedule_day(times, dry_run)
             LOG.info("All prayer jobs for today added to the scheduler.")
 
-            # Update next prayer info
-            self._update_next_prayer_info()
-
             job_kwargs = {"city": city, "country": country}
             if method is not None:
                 job_kwargs["method"] = method
@@ -79,6 +76,11 @@ class PrayerScheduler:
             state_manager.state = AppState.ERROR
         else:
             state_manager.state = AppState.IDLE
+            if dry_run:
+                state_manager.next_prayer_info = "Dry run: Prayer scheduled for immediate execution"
+            else:
+                # Update next prayer info
+                self._update_next_prayer_info()
 
     def run(self):
         """Starts the scheduler's background loop."""
@@ -204,7 +206,7 @@ class PrayerScheduler:
         all_jobs = self.scheduler.get_jobs()
         # Filter for prayer jobs and find the soonest one in the future
         prayer_jobs = sorted(
-            [j for j in all_jobs if j.id.startswith('prayer-') and getattr(j, 'next_run_time', None) and j.next_run_time > now],
+            [j for j in all_jobs if j.id.startswith('prayer-') and getattr(j, 'next_run_time', None) and j.next_run_time >= now],
             key=lambda j: j.next_run_time
         )
         
