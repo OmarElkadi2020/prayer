@@ -403,22 +403,29 @@ class StepWindow(QWidget):
 # ==================================================================
 # ❸ Application Entry Point
 # ==================================================================
-def run():
-    """Initializes and runs the QApplication, or reuses an existing instance."""
+def run(is_modal: bool = True):
+    """
+    Initializes and runs the QApplication.
+    If is_modal is True, it runs the window in a blocking way.
+    """
     app = QApplication.instance()
     if app is None:
         app = QApplication(sys.argv)
-        # Set the application layout direction to Right-to-Left
         app.setLayoutDirection(Qt.RightToLeft)
-        
-        # Set a default font that supports Arabic
         font = QFont(FONT_FAMILY)
         app.setFont(font)
 
     window = StepWindow()
-    window.show()
-    app.exec()
+    
+    if is_modal:
+        # For a true modal/blocking experience, we use exec_()
+        window.setWindowModality(Qt.ApplicationModal)
+        window.show()
+        window.exec() # This will block until the window is closed
+    else:
+        window.show()
+        # In non-modal mode, just show the window; the main app.exec() will handle its event loop.
 
 if __name__ == "__main__":
     # This allows the script to be run directly.
-    run()
+    run(is_modal=False)

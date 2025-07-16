@@ -7,8 +7,8 @@ from src.config.security import get_asset_path
 
 class TestActions(unittest.TestCase):
 
-    @patch('src.actions.pydub_play')
-    def test_play_real_wav_audio(self, mock_pydub_play):
+    @patch('subprocess.run')
+    def test_play_real_wav_audio(self, mock_subprocess_run):
         """
         Tests the play function with a real WAV audio file, mocking the actual playback.
         """
@@ -23,7 +23,10 @@ class TestActions(unittest.TestCase):
 
         try:
             play(audio_path)
-            mock_pydub_play.assert_called_once() # Assert that pydub_play was called
+            mock_subprocess_run.assert_called_once_with(
+                ['aplay', audio_path],
+                check=True,
+            )
         except Exception as e:
             self.fail(f"play() raised an exception unexpectedly: {e}")
 

@@ -11,7 +11,7 @@ import time
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from src.config.security import TZ, BUSY_SLOT, FOCUS_DELAY, LOG, load_config, adhan_path, get_asset_path
-from src.tray_icon import run_in_qt_thread
+from src.qt_utils import run_in_qt_thread
 
 from .prayer_times import today_times
 from .actions import play, focus_mode
@@ -42,8 +42,14 @@ class PrayerScheduler:
         self.scheduler = BackgroundScheduler(timezone=TZ, job_defaults=job_defaults)
         self._duaa_audio_path = duaa_path() # Cache the path on init
         self.calendar_service = calendar_service
+        self._focus_window_instance = None # To hold a strong reference to the focus window
 
-    def refresh(self, *, city: str, country: str, method: int | None = None, school: int | None = None, dry_run: bool = False):
+    def set_audio_path(self, audio_path: str):
+        """Sets a new path for the audio file for the scheduler instance."""
+        LOG.info(f"Scheduler audio path updated to: {audio_path}")
+        self.audio_path = audio_path
+
+    def refresh(self, *, city: str, country: str, method: int | None = None, school: int | None = None, dry_run: bool = False, dry_run_event: Optional[threading.Event] = None):
         """
         Wipes all existing jobs and schedules prayers for the current day.
         A daily refresh job is also scheduled to run shortly after midnight.
@@ -79,7 +85,6 @@ class PrayerScheduler:
             if dry_run:
                 state_manager.next_prayer_info = "Dry run: Prayer scheduled for immediate execution"
             else:
-                # Update next prayer info
                 self._update_next_prayer_info()
 
     def run(self):
@@ -90,113 +95,145 @@ class PrayerScheduler:
         else:
             LOG.info("Scheduler is already running.")
 
-    def play_adhan_and_duaa(self, audio_path: str):
-        """A combined action to play adhan, set state, and play duaa after a delay."""
-        LOG.info("Executing play_adhan_and_duaa for scheduled job.")
-        state_manager.state = AppState.PRAYER_TIME
-        LOG.info("Playing adhan...")
-
-        def _play_audio_blocking():
-            LOG.info("Starting _play_audio_blocking thread.")
-            try:
-                play(audio_path)
-                LOG.info("Adhan playback initiated. Waiting for duration...")
-                time.sleep(173) 
-                
-                if self._duaa_audio_path:
-                    LOG.info("Duaa audio path found. Playing duaa...")
-                    play(self._duaa_audio_path)
-                else:
-                    LOG.info("Duaa audio path not found. Skipping duaa.")
-                
-                LOG.info("Audio playback complete. Setting state to IDLE.")
-                state_manager.state = AppState.IDLE
-                # After the prayer, we need to find the *next* one.
-                self._update_next_prayer_info()
-            except Exception as e:
-                LOG.error(f"Error in _play_audio_blocking thread: {e}")
-
-        LOG.info("Attempting to start _play_audio_blocking thread.")
-        threading.Thread(target=_play_audio_blocking, daemon=True).start()
-        LOG.info("Thread for _play_audio_blocking started.")
-
     @run_in_qt_thread
     def trigger_focus_mode(self):
-        """Wrapper for the focus_mode action."""
-        LOG.info("Executing trigger_focus_mode for scheduled job.")
-        LOG.info("Triggering focus mode.")
-        LOG.info("Attempting to call focus_mode().")
-        focus_mode()
+        """Triggers focus mode, ensuring it runs on the Qt GUI thread."""
+        LOG.info("Triggering focus mode for GUI.")
+        if self._focus_window_instance is None or not self._focus_window_instance.isVisible():
+            from src.focus_steps import StepWindow # Import locally to avoid circular dependency
+            self._focus_window_instance = StepWindow(disable_sound=True) # Disable sound to avoid double sound with adhan
+            self._focus_window_instance.show()
+            self._focus_window_instance.activateWindow()
+        else:
+            self._focus_window_instance.activateWindow()
+
+    def play_adhan_and_duaa(self, audio_path: str, is_dry_run: bool = False):
+        """
+        A combined action to play adhan and duaa.
+        - In GUI mode, it then triggers the non-blocking focus window.
+        - In dry-run mode, it sets an event to signal completion to the main thread.
+        """
+        LOG.info("Executing play_adhan_and_duaa for scheduled job.")
+        state_manager.state = AppState.PRAYER_TIME
+        
+        try:
+            LOG.info(f"Playing adhan: {audio_path}")
+            play(audio_path)
+
+            if self._duaa_audio_path:
+                LOG.info(f"Playing duaa: {self._duaa_audio_path}")
+                play(self._duaa_audio_path)
+            else:
+                LOG.warning("Duaa audio path not found. Skipping duaa.")
+            
+            LOG.info("Audio finished.")
+
+        except Exception as e:
+            LOG.error(f"Error during audio playback or focus mode trigger: {e}")
+        
+        finally:
+            LOG.info("Playback sequence complete. Setting state to IDLE.")
+            state_manager.state = AppState.IDLE
+            self._update_next_prayer_info()
+
+    def run_dry_run_simulation(self, city: str, country: str, method: Optional[int], school: Optional[int]):
+        """
+        Executes a one-time dry run simulation of a prayer time, including audio playback.
+        This method blocks until the dry run audio sequence is complete.
+        """
+        LOG.info("Executing dry run simulation.")
+        audio_finished_event = threading.Event()
+
+        # For dry run, use the short completion sound instead of the full adhan
+        from src.config.security import get_asset_path
+        dry_run_audio_path = str(get_asset_path('complete_sound.wav'))
+        self.set_audio_path(dry_run_audio_path)
+
+        self.refresh(
+            city=city,
+            country=country,
+            method=method,
+            school=school,
+            dry_run=True,
+            dry_run_event=audio_finished_event
+        )
+        self.run() # Start the scheduler to execute the job
+
+        LOG.info("Waiting for dry run job to execute and audio to play...")
+        event_was_set = audio_finished_event.wait(timeout=90) # Wait up to 90s
+
+        if not event_was_set:
+            LOG.warning("Dry run timed out waiting for audio to finish.")
+        
+        LOG.info("Dry run simulation finished.")
+
+    def _schedule_single_prayer_job(self, name: str, at: datetime, is_dry_run: bool):
+        """
+        Schedules a single prayer job.
+        """
+        job_base_id = f"{name}-{at.strftime('%Y%m%d%H%M%S')}" if is_dry_run else f"{name}-{at.strftime('%Y%m%d%H%M')}"
+
+        job_kwargs = {
+            'audio_path': self.audio_path,
+            'is_dry_run': is_dry_run
+        }
+        self.trigger_focus_mode() # Trigger focus mode before audio
+        self.scheduler.add_job(
+            self.play_adhan_and_duaa, "date", run_date=at,
+            id=f"prayer-{job_base_id}", kwargs=job_kwargs
+        )
+        if is_dry_run:
+            LOG.info(f"🗓️  Dry run prayer simulation scheduled at {at.strftime('%H:%M:%S')}")
+        else:
+            LOG.info(f"🗓️  {name:<8s} prayer and focus sequence at {at.strftime('%H:%M')}")
 
     def _schedule_day(self, times: Dict[str, datetime], dry_run: bool = False):
-        """Schedules all prayer-related jobs for the given times."""
+        """
+        Schedules all prayer-related jobs for the given times.
+        Passes the dry_run_event to the job if in dry_run mode.
+        """
         now = datetime.now(TZ)
         LOG.debug(f"Scheduling for today. Current time: {now.strftime('%H:%M')}")
-        
+
+        if dry_run:
+            LOG.info("Dry run mode activated. Scheduling immediate test prayer.")
+            slot = now + timedelta(seconds=5)
+            job_base_id = f"dry-run-{slot.strftime('%Y%m%d%H%M%S')}"
+
+            self._schedule_single_prayer_job(
+                name="dry-run",
+                at=slot,
+                is_dry_run=True
+            )
+            LOG.info(f"🗓️  Dry run prayer and focus sequence scheduled at {slot.strftime('%H:%M:%S')}")
+            return
+
         for name, at in sorted(times.items()):
             if name in {"Sunrise", "Firstthird", "Lastthird"}:
                 continue
-            
-            if dry_run:
-                # For dry run, schedule only the first prayer time
-                slot = now + timedelta(seconds=5) # 5 seconds from now
-                LOG.info(f"Dry run: Scheduling {name} for {slot.strftime('%H:%M:%S')}")
 
-                job_base_id = f"{name}-{slot.strftime('%Y%m%d%H%M')}"
+            if at < now:
+                LOG.debug(f"Skipping past prayer: {name} at {at.strftime('%H:%M')}")
+                continue
 
-                # Schedule the combined adhan and duaa job
-                self.scheduler.add_job(
-                    self.play_adhan_and_duaa, "date", run_date=slot,
-                    id=f"prayer-{job_base_id}", args=[self.audio_path]
-                )
-                LOG.info(f"🗓️  {name:<8s} prayer at {slot.strftime('%H:%M')}")
+            slot = at
 
-                # Schedule Focus Mode
-                focus_time = slot + FOCUS_DELAY
-                self.scheduler.add_job(
-                    self.trigger_focus_mode, "date", run_date=focus_time,
-                    id=f"focus-{job_base_id}"
-                )
-                LOG.info(f"🗓️  {name:<8s} focus at {focus_time.strftime('%H:%M')}")
-                LOG.info(f"Job '{name}' and focus job added to scheduler for slot {slot.strftime('%H:%M:%S')}")
-                break # Schedule only one prayer for dry run
-            else: # This else block is for when dry_run is False
-                if at < now:
-                    LOG.debug(f"Skipping past prayer: {name} at {at.strftime('%H:%M')}")
+            if self.calendar_service:
+                if not self.calendar_service.add_event(
+                    start_time=at,
+                    summary=name,
+                    duration_minutes=BUSY_SLOT.total_seconds() / 60
+                ):
+                    LOG.info(f"Skipping scheduling for {name} as it's already in the external calendar.")
                     continue
+            else:
+                LOG.info("Calendar service not active. Scheduling prayer without calendar check.")
 
-                slot = at # Initialize slot with the prayer time
-
-                if self.calendar_service:
-                    found_slot = self.calendar_service.find_first_available_slot(at, BUSY_SLOT.total_seconds() / 60)
-                    if found_slot is None:
-                        LOG.warning(f"Could not find a free calendar gap for {name} around {at.strftime('%H:%M')}")
-                        continue
-                    slot = found_slot # Update slot if a free slot is found
-
-                    if not self.calendar_service.add_event(slot, name, BUSY_SLOT.total_seconds() / 60):
-                        LOG.info(f"Skipping {name}, as it's already in the external calendar.")
-                        continue
-                else:
-                    LOG.info(f"Calendar service is not active. Skipping calendar event for {name}.")
-
-                job_base_id = f"{name}-{slot.strftime('%Y%m%d%H%M')}"
-
-                # Schedule the combined adhan and duaa job
-                self.scheduler.add_job(
-                    self.play_adhan_and_duaa, "date", run_date=slot,
-                    id=f"prayer-{job_base_id}", args=[self.audio_path]
-                )
-                LOG.info(f"🗓️  {name:<8s} prayer at {slot.strftime('%H:%M')}")
-
-                # Schedule Focus Mode
-                focus_time = slot + FOCUS_DELAY
-                self.scheduler.add_job(
-                    self.trigger_focus_mode, "date", run_date=focus_time,
-                    id=f"focus-{job_base_id}"
-                )
-                LOG.info(f"🗓️  {name:<8s} focus at {focus_time.strftime('%H:%M')}")
-                LOG.info(f"Job '{name}' and focus job added to scheduler for slot {slot.strftime('%H:%M:%S')}")
+            self._schedule_single_prayer_job(
+                name=name,
+                at=slot,
+                is_dry_run=False
+            )
 
     def _update_next_prayer_info(self):
         """Finds the next scheduled prayer and updates the state manager."""
@@ -204,7 +241,6 @@ class PrayerScheduler:
         next_prayer_job = None
         
         all_jobs = self.scheduler.get_jobs()
-        # Filter for prayer jobs and find the soonest one in the future
         prayer_jobs = sorted(
             [j for j in all_jobs if j.id.startswith('prayer-') and getattr(j, 'next_run_time', None) and j.next_run_time >= now],
             key=lambda j: j.next_run_time
@@ -212,7 +248,6 @@ class PrayerScheduler:
         
         if prayer_jobs:
             next_prayer_job = prayer_jobs[0]
-            # Extract prayer name from job id: "prayer-Asr-202401011530" -> "Asr"
             try:
                 prayer_name = next_prayer_job.id.split('-')[1]
                 info = f"{prayer_name} at {next_prayer_job.next_run_time.strftime('%H:%M')}"
@@ -265,3 +300,5 @@ def run_scheduler_in_thread(one_time_run: bool = False, calendar_service: Option
 
     job_thread = threading.Thread(target=scheduler_job, daemon=True)
     job_thread.start()
+
+

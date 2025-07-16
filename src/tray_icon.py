@@ -89,12 +89,7 @@ class IconUpdater(QObject):
             self.update_state_signal.emit(current_state)
             time.sleep(ICON_UPDATE_INTERVAL)
 
-def run_in_qt_thread(target_func):
-    """Decorator to ensure a function runs in the Qt GUI thread."""
-    def wrapper(*args, **kwargs):
-        LOG.debug(f"Scheduling {target_func.__name__} on Qt thread.") # Changed to LOG.debug
-        QTimer.singleShot(0, lambda: target_func(*args, **kwargs))
-    return wrapper
+from src.qt_utils import run_in_qt_thread
 
 # --- Menu Actions ---
 @run_in_qt_thread
@@ -111,39 +106,82 @@ def show_settings(checked=False):
 @run_in_qt_thread
 def start_focus_mode(checked=False):
     """Creates and shows the focus steps window."""
-    global focus_window
-    if focus_window is None or not focus_window.isVisible():
-        focus_window = focus_steps.StepWindow()
-        focus_window.show()
-        focus_window.activateWindow()
-    else:
-        focus_window.activateWindow()
+    from src.actions import focus_mode
+    focus_mode(is_modal=True)
 
 @run_in_qt_thread
-def run_gui_dry_run(checked=False):
-    """Triggers a one-time dry run of the scheduler with GUI/audio output."""
-    print("GUI Dry run triggered from tray icon.")
-    # Get the scheduler instance (it will be created if it doesn't exist)
+def _show_modal_focus_window():
+    """Shows the focus window, ensuring it runs on the main Qt thread."""
+    from src.actions import focus_mode
+    LOG.info("Triggering modal focus mode.")
+    focus_mode(is_modal=True)
+
+
+def _execute_dry_run_simulation():
+    """
+    Executes the logic for a dry run, including audio feedback and focus mode.
+    This is designed to run in a background thread to avoid freezing the GUI.
+    """
+    LOG.info("Executing dry run simulation in background thread.")
+    
     current_config = load_config()
-    if not current_config.get('city') or not current_config.get('country'):
-        QMessageBox.warning(None, "Configuration Missing", "Please configure city and country in settings before running a dry run.")
-        return
+    
+    # Initialize services needed for the dry run
+    calendar_service = None
+    try:
+        creds = get_google_credentials()
+        calendar_service = GoogleCalendarService(creds)
+    except (CredentialsNotFoundError, Exception) as e:
+        LOG.warning(f"Could not initialize Google Calendar for dry run: {e}")
 
-    # Ensure the scheduler is running in the background
-    scheduler_instance = scheduler.get_scheduler_instance()
-    scheduler_instance.run() # Start if not already running
+    # Create an event to signal when the audio is done
+    audio_finished_event = threading.Event()
 
-    # Refresh the schedule with dry_run=True to get immediate jobs
+    # Get the scheduler instance
+    scheduler_instance = scheduler.get_scheduler_instance(calendar_service)
+
+    # For dry run, use the short completion sound instead of the full adhan
+    from src.config.security import get_asset_path
+    dry_run_audio_path = str(get_asset_path('complete_sound.wav'))
+    scheduler_instance.set_audio_path(dry_run_audio_path)
+
+    # Run a one-time refresh, passing the event to the scheduler
     scheduler_instance.refresh(
         city=current_config['city'],
         country=current_config['country'],
         method=current_config.get('method'),
         school=current_config.get('school'),
-        dry_run=True
+        dry_run=True,
+        dry_run_event=audio_finished_event
     )
-    print("Jobs in scheduler after refresh:")
-    for job in scheduler_instance.scheduler.get_jobs():
-        print(f"- Job ID: {job.id}, Next Run Time: {job.next_run_time}")
+    scheduler_instance.run() # Start the scheduler to execute the job
+
+    # Wait for the audio to finish playing, with a timeout
+    LOG.info("Waiting for dry run job to execute and audio to play...")
+    event_was_set = audio_finished_event.wait(timeout=90) # Wait up to 90s
+
+    # If the event was set, the audio finished. Now trigger focus mode.
+    if event_was_set:
+        LOG.info("Audio finished. Now triggering focus mode on the main thread.")
+        _show_modal_focus_window()
+    else:
+        LOG.warning("Dry run timed out waiting for audio to finish.")
+
+    LOG.info("Dry run simulation finished.")
+
+
+@run_in_qt_thread
+def run_gui_dry_run(checked=False):
+    """Triggers a one-time dry run of the scheduler with GUI/audio output."""
+    LOG.info("GUI Dry run triggered from tray icon.")
+    current_config = load_config()
+    if not current_config.get('city') or not current_config.get('country'):
+        QMessageBox.warning(None, "Configuration Missing", "Please configure city and country in settings before running a dry run.")
+        return
+
+    # Run the simulation in a background thread to avoid freezing the GUI
+    dry_run_thread = threading.Thread(target=_execute_dry_run_simulation, daemon=True)
+    dry_run_thread.start()
 
     
 
@@ -166,13 +204,17 @@ def quit_app(checked=False):
     LOG.info("Quit action triggered from tray icon menu.") # Changed to LOG.info
     QApplication.instance().quit()
 
-def setup_tray_icon():
+def setup_tray_icon(argv: list[str] | None = None):
     """
-    Initializes the QApplication and the system tray icon using PySide6.
+    Initializes the QApplication and the system tray icon.
+    This is now the main entry point for any GUI-related activity.
+    It handles argument parsing and decides the application's behavior.
     """
-    app = QApplication(sys.argv)
+    app = QApplication(sys.argv if argv is None else [sys.argv[0]] + argv)
     app.setQuitOnLastWindowClosed(False)
 
+
+    # --- Normal GUI Mode ---
     # Initialize icons after QApplication is created.
     global ICONS
     ICONS = {state: create_q_icon(BASE_ICON_PATH, state) for state in AppState}

@@ -39,7 +39,7 @@ class TestPrayerScheduler(unittest.TestCase):
 
         self.assertEqual(mock_state_manager.state, AppState.IDLE)
         jobs = self.scheduler.scheduler.get_jobs()
-        self.assertEqual(len(jobs), 7) # 3 prayers + 3 focus + 1 daily refresh
+        self.assertEqual(len(jobs), 4) # 3 prayers + 1 daily refresh
         daily_refresh_job = self.scheduler.scheduler.get_job('daily-refresh')
         self.assertIsNotNone(daily_refresh_job)
         
@@ -66,9 +66,9 @@ class TestPrayerScheduler(unittest.TestCase):
         prayer_times = {'Fajr': now + timedelta(minutes=10)}
         self.scheduler._schedule_day(prayer_times, dry_run=True)
         jobs = self.scheduler.scheduler.get_jobs()
-        self.assertEqual(len(jobs), 2)
+        self.assertEqual(len(jobs), 1)
         prayer_job = jobs[0]
-        self.assertTrue(prayer_job.id.startswith('prayer-Fajr'))
+        self.assertTrue(prayer_job.id.startswith('prayer-dry-run-'))
         self.assertAlmostEqual(prayer_job.trigger.run_date.timestamp(), (now + timedelta(seconds=5)).timestamp(), delta=2)
 
     def test_update_next_prayer_info(self):
@@ -93,22 +93,7 @@ class TestPrayerScheduler(unittest.TestCase):
                 self.scheduler._update_next_prayer_info()
                 self.assertEqual(mock_state_manager.next_prayer_info, "No upcoming prayers")
 
-    @patch('src.scheduler.play')
-    @patch('time.sleep')
-    @patch('src.scheduler.state_manager')
-    def test_play_adhan_and_duaa(self, mock_state_manager, mock_sleep, mock_play):
-        import threading
-        self.scheduler._duaa_audio_path = 'fake_duaa.wav'
-        
-        def test_wrapper():
-            self.scheduler.play_adhan_and_duaa('fake_adhan.mp3')
-
-        main_thread = threading.Thread(target=test_wrapper)
-        main_thread.start()
-        time.sleep(0.1)
-        
-        self.assertEqual(mock_state_manager.state, AppState.PRAYER_TIME)
-        main_thread.join(timeout=1)
+    
 
 @patch('src.scheduler.load_config')
 @patch('src.scheduler.get_scheduler_instance')

@@ -5,49 +5,48 @@
 
 from __future__ import annotations
 import sys
-import logging
-from importlib import resources
-
-from src.config.security import parse_args, LOG, TZ, load_config, get_asset_path
-from src.scheduler import PrayerScheduler
-from src.actions import focus_mode, play
-from src.calendar_api.google_calendar import GoogleCalendarService
-from src.auth.google_auth import get_google_credentials
+import threading
+from src.config.security import get_asset_path, load_config, LOG, parse_args
+from src.scheduler import get_scheduler_instance
 
 def duaa_path():
     return str(get_asset_path('duaa_after_adhan.wav'))
 
+def execute_cli_dry_run(args) -> int:
+    """
+    Executes the dry run simulation when triggered from the command line.
+    This function is designed to be called directly from __main__.py
+    when the --dry-run argument is present.
+    """
+    LOG.info("Dry run mode activated from CLI execution.")
+    current_config = load_config()
+    if not current_config.get('city') or not current_config.get('country'):
+        LOG.error("Dry run cannot proceed without city/country configuration.")
+        return 1
+
+    scheduler_instance = get_scheduler_instance(calendar_service=None) # No calendar service needed for dry run
+    scheduler_instance.run_dry_run_simulation(
+        city=current_config['city'],
+        country=current_config['country'],
+        method=current_config.get('method'),
+        school=current_config.get('school')
+    )
+    return 0
+
 def main(argv: list[str] | None = None) -> int:
-    argv = argv if argv is not None else [] # Ensure argv is always a list
+    """Main entry point for the application."""
+    # The main function now only decides which entry point to use based on
+    # a simple check for --install-service, which doesn't require Qt.
+    # All other logic, including arg parsing, is moved to the tray_icon
+    # to ensure it runs after QApplication is initialized.
 
-    # Load config to set initial logging level
-    initial_config = load_config()
-    LOG.setLevel(getattr(logging, initial_config.get('log_level', 'INFO').upper()))
+    raw_argv = sys.argv[1:] if argv is None else argv
 
-    # If no command-line arguments are provided, launch the default GUI tray mode.
-    # If --dry-run is present, do not launch the GUI.
-    if not argv or (argv and "--dry-run" not in argv):
-        from src import tray_icon
-        return tray_icon.setup_tray_icon()
-
-    # If arguments are present, proceed with CLI mode.
-    args = parse_args(argv)
-
-    # Check if config exists, if not, run setup GUI
-    config = load_config()
-    if not config.get('city') or not config.get('country'):
-        LOG.info("Configuration not found. Starting setup GUI.")
-        from src.gui import main as setup_main
-        setup_main()
-
-        # After setup, re-check config
-        config = load_config()
-        if not config.get('city') or not config.get('country'):
-            LOG.error("Configuration is still missing after setup. Exiting.")
-            return 1
-
-    if args.install_service:
+    # Early exit for service installation, which should not launch a GUI.
+    if '--install-service' in raw_argv:
         from src.platform.service import ServiceManager
+        # LOG is already imported at the top level
+        
         service_manager = ServiceManager(
             service_name="prayer-player",
             service_display_name="Prayer Player",
@@ -61,33 +60,17 @@ def main(argv: list[str] | None = None) -> int:
             LOG.error(f"Failed to install or enable service: {e}")
             return 1
         return 0
-    if args.setup_calendar:
-        from src.gui import main as setup_main
-        setup_main()
-        return 0
-    
-    audio_path = args.audio
 
-    # Initialize Google Calendar Service
-    creds = get_google_credentials()
-    calendar_service = GoogleCalendarService(creds)
-    calendar_service.setup_credentials()
+    # Parse arguments here for dry-run check
+    args = parse_args(raw_argv)
 
-    pray_sched = PrayerScheduler(audio_path, calendar_service)
-
-    # initial schedule and daily refresh at 00:05
-    pray_sched.refresh(city=args.city, country=args.country, method=args.method, school=args.school, dry_run=args.dry_run)
-
+    # Handle --dry-run directly
     if args.dry_run:
-        LOG.info("Dry run completed. No GUI or audio triggered.")
-        return 0
-    else:
-        try:
-            pray_sched.run()
-        except (KeyboardInterrupt, SystemExit):
-            LOG.info("Exit.")
-    
-    return 0
+        return execute_cli_dry_run(args)
+
+    # For all other cases, we launch the tray icon setup.
+    from src import tray_icon
+    return tray_icon.setup_tray_icon(raw_argv)
 
 
 if __name__ == "__main__":
