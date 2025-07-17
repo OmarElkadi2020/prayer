@@ -52,7 +52,6 @@ class FocusStepsPresenter:
 
     def attach_view(self, view):
         self.view = view
-        self._notify_view_update()
 
     def _get_current_step_data(self):
         is_final_step = self.current_step_index == len(self.content_steps)

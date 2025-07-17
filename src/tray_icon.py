@@ -106,15 +106,15 @@ def show_settings(checked=False):
 @run_in_qt_thread
 def start_focus_mode(checked=False):
     """Creates and shows the focus steps window."""
-    from src.actions import focus_mode
-    focus_mode(is_modal=True)
+    from src.actions import run_focus_steps
+    run_focus_steps(is_modal=True)
 
 @run_in_qt_thread
 def _show_modal_focus_window():
     """Shows the focus window, ensuring it runs on the main Qt thread."""
-    from src.actions import focus_mode
+    from src.actions import run_focus_steps
     LOG.info("Triggering modal focus mode.")
-    focus_mode(is_modal=True)
+    run_focus_steps(is_modal=True)
 
 
 @run_in_qt_thread
@@ -129,7 +129,7 @@ def quit_app(checked=False):
     QApplication.instance().quit()
 
 
-def setup_tray_icon(argv: list[str] | None = None, scheduler_instance: scheduler.PrayerScheduler = None):
+def setup_tray_icon(argv: list[str] | None = None, scheduler_instance: scheduler.PrayerScheduler = None, dry_run: bool = False):
     """
     Initializes the QApplication and the system tray icon.
     This is now the main entry point for any GUI-related activity.
@@ -137,6 +137,12 @@ def setup_tray_icon(argv: list[str] | None = None, scheduler_instance: scheduler
     """
     app = QApplication.instance() or QApplication(sys.argv if argv is None else [sys.argv[0]] + argv)
     app.setQuitOnLastWindowClosed(False)
+
+    if dry_run:
+        LOG.info("Dry run mode activated. Skipping GUI initialization.")
+        if scheduler_instance:
+            scheduler_instance.run()
+        return 0 # Return 0 for success in dry run mode, as there's no GUI event loop to run
 
     # Move create_q_icon and ICONS initialization inside here
     def create_q_icon(base_path, state: AppState):

@@ -93,6 +93,7 @@ class FocusStepsView(QWidget):
         self.setup_layouts()
         self.setup_connections()
         self.setup_sound_effect()
+        self.presenter._notify_view_update() # Notify presenter that view is ready
 
     def setup_stylesheet(self):
         """Sets the global QSS stylesheet for the application."""
