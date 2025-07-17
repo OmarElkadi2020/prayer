@@ -17,3 +17,4 @@ PySide6
 pydantic
 pydub
 simpleaudio
+Pillow
