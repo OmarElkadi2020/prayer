@@ -81,7 +81,7 @@ import os
 if platform.system() == "Windows":
     runtime_tmpdir = None  # Use the default temp directory on Windows
 elif platform.system() == "Darwin":
-    runtime_tmpdir = os.path.expanduser('~/Library/Caches/PrayerPlayerTemp')  # Use a dedicated cache directory on macOS
+    pass
 else:
     runtime_tmpdir = '/tmp/pyinstaller'  # Use a dedicated directory on Linux
 
