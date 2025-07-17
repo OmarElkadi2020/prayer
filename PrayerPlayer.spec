@@ -10,14 +10,14 @@ qt_plugins_path = os.path.join(pyside6_path, 'Qt', 'plugins')
 platforms_plugin_path = os.path.join(qt_plugins_path, 'platforms')
 xcbglintegrations_plugin_path = os.path.join(qt_plugins_path, 'xcbglintegrations')
 
-
-
 datas = [
     ('src/assets', 'src/assets'),
     ('src/config', 'src/config'),
     (platforms_plugin_path, 'PySide6/Qt/plugins/platforms'),
     (xcbglintegrations_plugin_path, 'PySide6/Qt/plugins/xcbglintegrations')
 ]
+binaries = []
+hiddenimports = ['src.auth', 'src.calendar_api', 'src.config', 'src.platform', 'src.gui', 'src.state', 'src.tray_icon']
 
 tmp_ret = collect_all('PySide6')
 
