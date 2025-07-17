@@ -1,4 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
+import sys
 from PyInstaller.utils.hooks import collect_submodules
 from PyInstaller.utils.hooks import collect_all
 
@@ -45,5 +46,13 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['src/assets/mosque.png'],
+    icon='src/assets/mosque.png',
 )
+
+if sys.platform == 'darwin':
+    app = BUNDLE(
+        exe,
+        name='PrayerPlayer.app',
+        icon='src/assets/mosque.png',
+        bundle_identifier=None,
+    )
