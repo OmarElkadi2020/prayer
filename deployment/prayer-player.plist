@@ -7,9 +7,7 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/bin/env</string>
-        <string>python3</string>
-        <string>/path/to/your/prayer/src/prayer/__main__.py</string>
+        <string>/Applications/PrayerPlayer.app/Contents/MacOS/PrayerPlayer</string>
         <!-- Add any arguments your script needs here, e.g., --city "London" -->
         <!-- <string>--city</string> -->
         <!-- <string>YourCity</string> -->
@@ -33,9 +31,7 @@
     <key>StandardErrorPath</key>
     <string>/tmp/com.prayerplayer.scheduler.stderr.log</string>
 
-    <!-- WorkingDirectory: Set the working directory for the script -->
-    <key>WorkingDirectory</key>
-    <string>/path/to/your/prayer</string>
+    
 
     <!-- EnvironmentVariables: Set environment variables for the script -->
     <!-- <key>EnvironmentVariables> -->

@@ -1,44 +1,22 @@
 # -*- mode: python ; coding: utf-8 -*-
+from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_all
+
+datas = [('src/assets', 'src/assets'), ('src/config', 'src/config')]
+binaries = []
+hiddenimports = ['src.auth', 'src.calendar_api', 'src.config', 'src.platform', 'src.gui', 'src.state', 'src.tray_icon']
+hiddenimports += collect_submodules('PySide6.Qt.plugins.platforms')
+hiddenimports += collect_submodules('PySide6.Qt.plugins.xcbglintegrations')
+tmp_ret = collect_all('PySide6')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 
 a = Analysis(
-    ['src/prayer/__main__.py'],
-    pathex=['src'],
-    binaries=[],
-    datas=[('src/prayer/assets', 'prayer/assets'), ('src/prayer/config', 'prayer/config')],
-    hiddenimports=[
-        'prayer.auth', 
-        'prayer.calendar_api', 
-        'prayer.config', 
-        'prayer.platform', 
-        'prayer.gui', 
-        'prayer.state', 
-        'prayer.tray_icon',
-        'json',
-        'argcomplete',
-        'zoneinfo',
-        'appdirs',
-        'prayer.scheduler',
-        'prayer.actions',
-        'prayer.platform.service',
-        'APScheduler',
-        'python_vlc',
-        'keyring',
-        'tzlocal',
-        'pystray',
-        'PySide6.QtSvg',
-        'PySide6.QtNetwork',
-        'PySide6.QtWidgets',
-        'requests',
-        'ics',
-        'schedule',
-        'google_api_python_client',
-        'google_auth_httplib2',
-        'google_auth_oauthlib',
-        'msgraph_sdk',
-        'playsound',
-        'PySide6',
-    ],
+    ['src/__main__.py'],
+    pathex=[],
+    binaries=binaries,
+    datas=datas,
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -67,11 +45,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-)
-
-app = BUNDLE(
-    exe,
-    name='PrayerPlayer.app',
-    icon='src/prayer/assets/mosque.png',
-    bundle_identifier=None,
+    icon=['src/assets/mosque.png'],
 )

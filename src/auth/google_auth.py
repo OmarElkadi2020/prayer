@@ -6,6 +6,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from appdirs import user_data_dir
+from importlib import resources
 
 
 class CredentialsNotFoundError(Exception):
@@ -17,21 +18,10 @@ SCOPES = ['https://www.googleapis.com/auth/calendar', 'https://www.googleapis.co
 APP_NAME = "PrayerPlayer"
 APP_AUTHOR = "Omar"
 
-# Determine the base path for resources, considering PyInstaller bundling.
-# In a PyInstaller bundle, sys._MEIPASS points to the temporary directory
-# where the application's data files are extracted.
-if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-    BASE_PATH = sys._MEIPASS
-else:
-    # For development, determine the project root dynamically.
-    # This assumes google_auth.py is located at src/prayer/auth/google_auth.py
-    # and the project root is 4 levels up from this file.
-    BASE_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-
 # Path for user-specific, writable config files
 USER_CONFIG_DIR = user_data_dir(APP_NAME, APP_AUTHOR)
 TOKEN_FILE = os.path.join(USER_CONFIG_DIR, 'token.json')
-CREDENTIALS_FILE = os.path.join(USER_CONFIG_DIR, 'credentials.json')
+# CREDENTIALS_FILE is now accessed via importlib.resources
 
 def get_google_credentials(reauthenticate=False):
     creds = None
@@ -51,17 +41,16 @@ def get_google_credentials(reauthenticate=False):
             creds.refresh(Request())
         else:
             # Check if the credentials file exists in the user's config directory or the project root.
-            credentials_path = CREDENTIALS_FILE
-            if not os.path.exists(credentials_path):
-                credentials_path = os.path.join(BASE_PATH, 'src', 'config', 'security', 'credentials.json')
-
-            if not os.path.exists(credentials_path):
-                message = f"'credentials.json' not found.\n\nPlease place your Google API credentials file at:\n{CREDENTIALS_FILE}"
-                raise CredentialsNotFoundError(message)
-
             try:
-                flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
-                creds = flow.run_local_server(port=0)
+                with resources.path('src.config.security', 'credentials.json') as credentials_path:
+                    flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
+                    creds = flow.run_local_server(port=0)
+            except FileNotFoundError:
+                message = (
+                    "Google API credentials file not found within the application bundle.\n\n"
+                    "Please ensure the application is correctly packaged or that 'src/config/security/credentials.json' exists in development mode."
+                )
+                raise CredentialsNotFoundError(message)
             except Exception as e:
                 raise CredentialsNotFoundError(f"Failed to obtain new credentials: {e}") from e
         

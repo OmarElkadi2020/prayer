@@ -10,7 +10,7 @@ PROJECT_ROOT=$(pwd)
 
 # Step 0: Clean up previous builds and PyInstaller cache
 echo "--- Cleaning up previous builds and PyInstaller cache ---"
-rm -rf build dist *.spec
+rm -rf build dist *.spec __pycache__
 
 
 # Step 1: Set up Python and install dependencies
@@ -28,19 +28,19 @@ echo "--- Building application executable with PyInstaller ---"
 # Ensure the dist directory exists
 mkdir -p dist
 
-pyinstaller --noconfirm --onefile --windowed \
+pyinstaller --noconfirm --onefile --windowed --collect-all PySide6 --collect-submodules PySide6.Qt.plugins.platforms --collect-submodules PySide6.Qt.plugins.xcbglintegrations \
   --name "PrayerPlayer" \
-  --icon "src/prayer/assets/mosque.png" \
-  --add-data "src/prayer/assets:prayer/assets" \
-  --add-data "src/prayer/config:prayer/config" \
-  --hidden-import "prayer.auth" \
-  --hidden-import "prayer.calendar_api" \
-  --hidden-import "prayer.config" \
-  --hidden-import "prayer.platform" \
-  --hidden-import "prayer.gui" \
-  --hidden-import "prayer.state" \
-  --hidden-import "prayer.tray_icon" \
-  src/prayer/__main__.py
+  --icon "src/assets/mosque.png" \
+  --add-data "src/assets:src/assets" \
+  --add-data "src/config:src/config" \
+  --hidden-import "src.auth" \
+  --hidden-import "src.calendar_api" \
+  --hidden-import "src.config" \
+  --hidden-import "src.platform" \
+  --hidden-import "src.gui" \
+  --hidden-import "src.state" \
+  --hidden-import "src.tray_icon" \
+  src/__main__.py
 
 echo "PyInstaller build complete. Executable is in dist/PrayerPlayer"
 
@@ -88,7 +88,7 @@ EOF
 
 # Copy the application executable and icon into the package structure.
 cp dist/PrayerPlayer "${DEB_DIR}/usr/local/bin/"
-cp src/prayer/assets/mosque.png "${DEB_DIR}/usr/share/icons/hicolor/256x256/apps/prayer-player.png"
+cp src/assets/mosque.png "${DEB_DIR}/usr/share/icons/hicolor/256x256/apps/prayer-player.png"
 
 # Set correct permissions for the package directory.
 chmod -R 755 "${DEB_DIR}"
