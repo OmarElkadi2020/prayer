@@ -7,34 +7,32 @@ from __future__ import annotations
 import sys
 import threading
 from src.config.security import get_asset_path, load_config, LOG, parse_args
-from src.scheduler import get_scheduler_instance
+from src.scheduler import PrayerScheduler
+from src.state import state_manager
+from src.prayer_times import today_times
+from src.auth.google_auth import get_google_credentials
+from src.calendar_api.google_calendar import GoogleCalendarService
 
 def duaa_path():
     return str(get_asset_path('duaa_after_adhan.wav'))
 
-def execute_cli_dry_run(args) -> int:
-    """
-    Executes the dry run simulation when triggered from the command line.
-    This function is designed to be called directly from __main__.py
-    when the --dry-run argument is present.
-    """
-    LOG.info("Dry run mode activated from CLI execution.")
-    current_config = load_config()
-    if not current_config.get('city') or not current_config.get('country'):
-        LOG.error("Dry run cannot proceed without city/country configuration.")
-        return 1
-
-    scheduler_instance = get_scheduler_instance(calendar_service=None) # No calendar service needed for dry run
-    scheduler_instance.run_dry_run_simulation(
-        city=current_config['city'],
-        country=current_config['country'],
-        method=current_config.get('method'),
-        school=current_config.get('school')
-    )
-    return 0
-
 def main(argv: list[str] | None = None) -> int:
     """Main entry point for the application."""
+    
+    # --- Global Exception Handler ---
+    def global_exception_handler(exc_type, exc_value, exc_traceback):
+        """Catches and logs uncaught exceptions."""
+        LOG.critical("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+        # Optionally, show a message to the user
+        from PySide6.QtWidgets import QMessageBox
+        msg_box = QMessageBox()
+        msg_box.setIcon(QMessageBox.Critical)
+        msg_box.setText("An unexpected error occurred. Please check the logs for details.")
+        msg_box.setWindowTitle("Application Error")
+        msg_box.exec()
+
+    sys.excepthook = global_exception_handler
+    
     # The main function now only decides which entry point to use based on
     # a simple check for --install-service, which doesn't require Qt.
     # All other logic, including arg parsing, is moved to the tray_icon
@@ -64,13 +62,60 @@ def main(argv: list[str] | None = None) -> int:
     # Parse arguments here for dry-run check
     args = parse_args(raw_argv)
 
+    # --- Composition Root ---
+    config = load_config()
+    
+    # Initialize services
+    calendar_service = None
+    if config.google_calendar_id:
+        creds = get_google_credentials()
+        if creds:
+            calendar_service = GoogleCalendarService(creds)
+
+    # Determine action executor
+    from src.actions_executor import DefaultActionExecutor, DryRunActionExecutor
+    action_executor = DryRunActionExecutor() if args.dry_run else DefaultActionExecutor()
+
+    # Initialize scheduler
+    scheduler = PrayerScheduler(
+        audio_path=duaa_path(),
+        calendar_service=calendar_service,
+        state_manager=state_manager,
+        prayer_times_func=today_times,
+        action_executor=action_executor
+    )
+
     # Handle --dry-run directly
     if args.dry_run:
-        return execute_cli_dry_run(args)
+        LOG.info("Dry run mode activated from CLI execution.")
+        if not config.city or not config.country:
+            LOG.error("Dry run cannot proceed without city/country configuration.")
+            return 1
+        
+        scheduler.run_dry_run_simulation(
+            city=config.city,
+            country=config.country,
+            method=config.method,
+            school=config.school
+        )
+        return 0
 
     # For all other cases, we launch the tray icon setup.
     from src import tray_icon
-    return tray_icon.setup_tray_icon(raw_argv)
+    
+    # Initial refresh
+    if config.city and config.country:
+        scheduler.refresh(
+            city=config.city,
+            country=config.country,
+            method=config.method,
+            school=config.school
+        )
+        scheduler.run()
+    else:
+        LOG.warning("No city/country configured. Scheduler will not run.")
+
+    return tray_icon.setup_tray_icon(raw_argv, scheduler)
 
 
 if __name__ == "__main__":

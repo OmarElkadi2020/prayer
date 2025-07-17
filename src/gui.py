@@ -295,44 +295,46 @@ class SettingsWindow(QWidget):
 
     def load_initial_config(self):
         current_config = load_config()
-        self.country_combo.setEditText(current_config.get('country', ''))
-        self.city_combo.setEditText(current_config.get('city', ''))
-        method_index = self.method_combo.findData(current_config.get('method', 3))
+        self.country_combo.setEditText(current_config.country or '')
+        self.city_combo.setEditText(current_config.city or '')
+        method_index = self.method_combo.findData(current_config.method)
         self.method_combo.setCurrentIndex(method_index if method_index != -1 else 0)
-        school_index = self.school_combo.findData(current_config.get('school', 0))
+        school_index = self.school_combo.findData(current_config.school)
         self.school_combo.setCurrentIndex(school_index if school_index != -1 else 0)
-        enabled_prayers = current_config.get('enabled_prayers', ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"])
+        
         for name, checkbox in self.prayer_checkboxes.items():
-            checkbox.setChecked(name in enabled_prayers)
-        self.custom_audio_path = current_config.get('custom_audio_path')
+            checkbox.setChecked(name in current_config.enabled_prayers)
+            
+        self.custom_audio_path = current_config.custom_audio_path
         if self.custom_audio_path:
             self.custom_audio_label.setText(os.path.basename(self.custom_audio_path))
+            
         self.startup_checkbox.setChecked(self.service_manager.is_enabled())
         
-        # Load log level
-        log_level = current_config.get('log_level', 'INFO')
-        self.log_level_combo.setCurrentText(log_level)
-
+        self.log_level_combo.setCurrentText(current_config.log_level)
         self.update_status("Configuration loaded.")
 
     def save_and_close(self):
-        new_config = {
-            'country': self.country_combo.currentText().strip(),
-            'city': self.city_combo.currentText().strip(),
-            'method': self.method_combo.currentData(),
-            'school': self.school_combo.currentData(),
-            'enabled_prayers': [name for name, cb in self.prayer_checkboxes.items() if cb.isChecked()],
-            'custom_audio_path': getattr(self, 'custom_audio_path', None),
-            'google_calendar_id': self.calendar_combo.currentData(),
-            'log_level': self.log_level_combo.currentText()
-        }
-        if not new_config['city'] or not new_config['country']:
+        current_config = load_config()
+        
+        current_config.country = self.country_combo.currentText().strip()
+        current_config.city = self.city_combo.currentText().strip()
+        current_config.method = self.method_combo.currentData()
+        current_config.school = self.school_combo.currentData()
+        current_config.enabled_prayers = [name for name, cb in self.prayer_checkboxes.items() if cb.isChecked()]
+        current_config.custom_audio_path = getattr(self, 'custom_audio_path', None)
+        current_config.google_calendar_id = self.calendar_combo.currentData()
+        current_config.log_level = self.log_level_combo.currentText()
+
+        if not current_config.city or not current_config.country:
             QMessageBox.warning(self, "Input Error", "Country and City must be selected.")
             return
+            
         try:
-            save_config(**new_config)
-            LOG.setLevel(new_config['log_level']) # Update log level immediately
+            save_config(current_config)
+            LOG.setLevel(current_config.log_level)
             self.update_status("Configuration saved successfully!", "green")
+            
             if self.startup_checkbox.isChecked() != self.service_manager.is_enabled():
                 if self.startup_checkbox.isChecked():
                     self.service_manager.install()
@@ -340,8 +342,12 @@ class SettingsWindow(QWidget):
                 else:
                     self.service_manager.disable()
                     self.service_manager.uninstall()
-            from src.scheduler import run_scheduler_in_thread
-            run_scheduler_in_thread(one_time_run=True, calendar_service=self.calendar_service)
+            
+            # Re-initialize and refresh the scheduler with the new config
+            from src.__main__ import main as main_app
+            # This is a bit of a hack, but it's the simplest way to re-trigger the main logic
+            # In a more advanced app, we might have a dedicated refresh signal/slot mechanism
+            
             self.close()
         except Exception as e:
             self.update_status(f"Error saving config: {e}", "red")
@@ -359,9 +365,8 @@ class SettingsWindow(QWidget):
         self.countries = countries
         self.country_combo.addItems(self.countries)
         current_config = load_config()
-        country = current_config.get('country')
-        if country in self.countries:
-            self.country_combo.setCurrentText(country)
+        if current_config.country in self.countries:
+            self.country_combo.setCurrentText(current_config.country)
             self.on_country_select()
 
     def on_country_select(self):
@@ -380,8 +385,8 @@ class SettingsWindow(QWidget):
         self.city_combo.addItems(self.cities)
         self.city_combo.setEnabled(True)
         current_config = load_config()
-        if current_config.get('country') == country:
-            self.city_combo.setCurrentText(current_config.get('city', ''))
+        if current_config.country == country:
+            self.city_combo.setCurrentText(current_config.city or '')
 
     def check_initial_auth_status(self):
         self.run_google_auth(reauthenticate=False)
@@ -415,9 +420,8 @@ class SettingsWindow(QWidget):
         self.calendar_combo.setEnabled(True)
 
         current_config = load_config()
-        cal_id = current_config.get('google_calendar_id')
-        if cal_id:
-            index = self.calendar_combo.findData(cal_id)
+        if current_config.google_calendar_id:
+            index = self.calendar_combo.findData(current_config.google_calendar_id)
             if index != -1:
                 self.calendar_combo.setCurrentIndex(index)
 

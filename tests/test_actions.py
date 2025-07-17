@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch
 import os
 
-from src.actions import play, focus_mode
+from src.actions import play, run_focus_steps
 from src.config.security import get_asset_path
 
 class TestActions(unittest.TestCase):
@@ -30,13 +30,13 @@ class TestActions(unittest.TestCase):
         except Exception as e:
             self.fail(f"play() raised an exception unexpectedly: {e}")
 
-    @patch('src.actions.run_focus_steps_window')
-    def test_focus_mode(self, mock_run_focus_steps):
+    @patch('src.focus_steps_view.run')
+    def test_focus_mode(self, mock_run_focus_steps_window):
         """
-        Tests that focus_mode calls the run_focus_steps_window function.
+        Tests that focus_mode calls the run_focus_steps function.
         """
-        focus_mode()
-        mock_run_focus_steps.assert_called_once()
+        run_focus_steps(is_modal=True)
+        mock_run_focus_steps_window.assert_called_once_with(is_modal=True)
 
     def test_play_file_not_found(self):
         """

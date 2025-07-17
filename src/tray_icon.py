@@ -13,7 +13,7 @@ from PIL import Image, ImageDraw
 from PIL.ImageQt import ImageQt
 
 from src.config.security import load_config, LOG # Import LOG
-from src import gui, focus_steps, scheduler
+from src import gui, focus_steps_view, scheduler
 from src.state import state_manager, AppState
 from src.calendar_api.google_calendar import GoogleCalendarService # Added
 from src.auth.google_auth import get_google_credentials, CredentialsNotFoundError # Added
@@ -117,82 +117,6 @@ def _show_modal_focus_window():
     focus_mode(is_modal=True)
 
 
-def _execute_dry_run_simulation():
-    """
-    Executes the logic for a dry run, including audio feedback and focus mode.
-    This is designed to run in a background thread to avoid freezing the GUI.
-    """
-    LOG.info("Executing dry run simulation in background thread.")
-    
-    current_config = load_config()
-    
-    # Initialize services needed for the dry run
-    calendar_service = None
-    try:
-        creds = get_google_credentials()
-        calendar_service = GoogleCalendarService(creds)
-    except (CredentialsNotFoundError, Exception) as e:
-        LOG.warning(f"Could not initialize Google Calendar for dry run: {e}")
-
-    # Create an event to signal when the audio is done
-    audio_finished_event = threading.Event()
-
-    # Get the scheduler instance
-    scheduler_instance = scheduler.get_scheduler_instance(calendar_service)
-
-    # For dry run, use the short completion sound instead of the full adhan
-    from src.config.security import get_asset_path
-    dry_run_audio_path = str(get_asset_path('complete_sound.wav'))
-    scheduler_instance.set_audio_path(dry_run_audio_path)
-
-    # Run a one-time refresh, passing the event to the scheduler
-    scheduler_instance.refresh(
-        city=current_config['city'],
-        country=current_config['country'],
-        method=current_config.get('method'),
-        school=current_config.get('school'),
-        dry_run=True,
-        dry_run_event=audio_finished_event
-    )
-    scheduler_instance.run() # Start the scheduler to execute the job
-
-    # Wait for the audio to finish playing, with a timeout
-    LOG.info("Waiting for dry run job to execute and audio to play...")
-    event_was_set = audio_finished_event.wait(timeout=90) # Wait up to 90s
-
-    # If the event was set, the audio finished. Now trigger focus mode.
-    if event_was_set:
-        LOG.info("Audio finished. Now triggering focus mode on the main thread.")
-        _show_modal_focus_window()
-    else:
-        LOG.warning("Dry run timed out waiting for audio to finish.")
-
-    LOG.info("Dry run simulation finished.")
-
-
-@run_in_qt_thread
-def run_gui_dry_run(checked=False):
-    """Triggers a one-time dry run of the scheduler with GUI/audio output."""
-    LOG.info("GUI Dry run triggered from tray icon.")
-    current_config = load_config()
-    if not current_config.get('city') or not current_config.get('country'):
-        QMessageBox.warning(None, "Configuration Missing", "Please configure city and country in settings before running a dry run.")
-        return
-
-    # Run the simulation in a background thread to avoid freezing the GUI
-    dry_run_thread = threading.Thread(target=_execute_dry_run_simulation, daemon=True)
-    dry_run_thread.start()
-
-    
-
-    
-
-@run_in_qt_thread
-def sync_calendar(checked=False):
-    """Triggers a manual, one-time sync of the calendar."""
-    LOG.info("Manual calendar sync triggered from tray icon.") # Changed to LOG.info
-    scheduler.run_scheduler_in_thread(one_time_run=True)
-
 @run_in_qt_thread
 def check_for_updates(checked=False):
     """Placeholder for checking for new application updates."""
@@ -204,7 +128,7 @@ def quit_app(checked=False):
     LOG.info("Quit action triggered from tray icon menu.") # Changed to LOG.info
     QApplication.instance().quit()
 
-def setup_tray_icon(argv: list[str] | None = None):
+def setup_tray_icon(argv: list[str] | None = None, scheduler_instance: scheduler.PrayerScheduler = None):
     """
     Initializes the QApplication and the system tray icon.
     This is now the main entry point for any GUI-related activity.
@@ -228,15 +152,11 @@ def setup_tray_icon(argv: list[str] | None = None):
     # --- Menu Actions ---
     settings_action = QAction("Settings...", triggered=show_settings)
     focus_action = QAction("Start Focus Mode", triggered=start_focus_mode)
-    sync_action = QAction("Sync Calendar", triggered=sync_calendar)
-    dry_run_action = QAction("Run Dry Run", triggered=run_gui_dry_run)
     update_action = QAction("Check for Updates...", triggered=check_for_updates)
     quit_action = QAction("Quit", triggered=quit_app)
     
     menu.addAction(settings_action)
     menu.addAction(focus_action)
-    menu.addAction(sync_action)
-    menu.addAction(dry_run_action)
     menu.addAction(update_action)
     menu.addSeparator()
     menu.addAction(quit_action)
@@ -258,23 +178,13 @@ def setup_tray_icon(argv: list[str] | None = None):
     status_thread = threading.Thread(target=icon_updater.run, daemon=True)
     status_thread.start()
 
-    # Initialize Calendar Service and pass to scheduler
-    calendar_service = None
-    try:
-        creds = get_google_credentials()
-        calendar_service = GoogleCalendarService(creds)
-        LOG.info("Google Calendar service initialized in tray icon setup.")
-    except CredentialsNotFoundError as e:
-        LOG.warning(f"Google Calendar credentials not found or invalid: {e}. Calendar integration will be disabled.")
-    except Exception as e:
-        LOG.error(f"Error initializing Google Calendar service: {e}. Calendar integration will be disabled.")
-
     # Start the main prayer time scheduler loop, passing the calendar service
-    scheduler.run_scheduler_in_thread(calendar_service=calendar_service)
+    if scheduler_instance:
+        scheduler_instance.run()
 
     # On first run, if config is missing, show settings
     current_config = load_config()
-    if not current_config.get('city') or not current_config.get('country'):
+    if not current_config.city or not current_config.country:
         LOG.info("Configuration not found, showing settings window.") # Changed to LOG.info
         show_settings()
 

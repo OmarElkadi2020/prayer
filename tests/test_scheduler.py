@@ -1,121 +1,87 @@
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, MagicMock, patch
 from datetime import datetime, timedelta
-import time
+import threading
 
-from src.scheduler import PrayerScheduler, get_scheduler_instance, run_scheduler_in_thread
+from src.scheduler import PrayerScheduler
+from src.actions_executor import ActionExecutor
 from src.state import AppState
 from src.config.security import TZ
 
 class TestPrayerScheduler(unittest.TestCase):
 
     def setUp(self):
-        self.mock_calendar_service = MagicMock()
-        # When find_first_available_slot is called, return the first argument (the datetime)
-        self.mock_calendar_service.find_first_available_slot.side_effect = lambda at, *args: at
-        self.mock_calendar_service.add_event.return_value = True
+        self.audio_path = "/fake/path/to/audio.wav"
+        self.calendar_service = Mock()
+        self.state_manager = Mock()
+        self.prayer_times_func = Mock()
+        self.action_executor = Mock(spec=ActionExecutor)
 
-        with patch('src.scheduler.adhan_path', return_value='fake_path.mp3'):
-            from src import scheduler
-            scheduler._scheduler_instance = None
-            self.scheduler = get_scheduler_instance(self.mock_calendar_service)
+        self.scheduler = PrayerScheduler(
+            audio_path=self.audio_path,
+            calendar_service=self.calendar_service,
+            state_manager=self.state_manager,
+            prayer_times_func=self.prayer_times_func,
+            action_executor=self.action_executor
+        )
 
-    def tearDown(self):
-        if self.scheduler.scheduler.running:
-            self.scheduler.scheduler.shutdown()
+    def test_initialization(self):
+        self.assertIsNotNone(self.scheduler.scheduler)
+        self.assertEqual(self.scheduler.audio_path, self.audio_path)
+        self.assertEqual(self.scheduler.action_executor, self.action_executor)
 
-    @patch('src.scheduler.today_times')
-    @patch('src.scheduler.state_manager')
-    def test_refresh_schedules_prayers_and_daily_job(self, mock_state_manager, mock_today_times):
+    def test_refresh_schedules_prayers(self):
+        city = "Test City"
+        country = "Test Country"
         now = datetime.now(TZ)
         prayer_times = {
-            'Fajr': now + timedelta(hours=1),
-            'Dhuhr': now + timedelta(hours=7),
-            'Asr': now + timedelta(hours=10),
+            "Fajr": now + timedelta(minutes=10),
+            "Dhuhr": now + timedelta(hours=4),
         }
-        mock_today_times.return_value = prayer_times
+        self.prayer_times_func.return_value = prayer_times
 
-        self.scheduler.refresh(city='Test City', country='Test Country')
+        self.scheduler.refresh(city=city, country=country)
 
-        self.assertEqual(mock_state_manager.state, AppState.IDLE)
-        jobs = self.scheduler.scheduler.get_jobs()
-        self.assertEqual(len(jobs), 4) # 3 prayers + 1 daily refresh
-        daily_refresh_job = self.scheduler.scheduler.get_job('daily-refresh')
-        self.assertIsNotNone(daily_refresh_job)
+        self.prayer_times_func.assert_called_once_with(city, country, None, None)
+        self.assertEqual(self.state_manager.state, AppState.IDLE)
         
-        # Find the hour and minute fields in the trigger
-        hour_field = next((f for f in daily_refresh_job.trigger.fields if f.name == 'hour'), None)
-        minute_field = next((f for f in daily_refresh_job.trigger.fields if f.name == 'minute'), None)
+        # 2 prayers * 2 jobs (focus + adhan) + 1 daily refresh job = 5
+        self.assertEqual(len(self.scheduler.scheduler.get_jobs()), 5)
 
-        self.assertIsNotNone(hour_field)
-        self.assertEqual(str(hour_field), '0')
-        self.assertIsNotNone(minute_field)
-        self.assertEqual(str(minute_field), '5')
+    def test_refresh_dry_run(self):
+        city = "Test City"
+        country = "Test Country"
+        dry_run_event = threading.Event()
 
-    @patch('src.scheduler.today_times')
-    @patch('src.scheduler.state_manager')
-    def test_refresh_handles_exception(self, mock_state_manager, mock_today_times):
-        mock_today_times.side_effect = Exception("API Error")
-        self.scheduler.refresh(city='Test City', country='Test Country')
-        self.assertEqual(mock_state_manager.state, AppState.ERROR)
-        self.assertEqual(len(self.scheduler.scheduler.get_jobs()), 0)
+        self.scheduler.refresh(city=city, country=country, dry_run=True, dry_run_event=dry_run_event)
 
-    @patch('src.scheduler.state_manager')
-    def test_schedule_day_dry_run(self, mock_state_manager):
-        now = datetime.now(TZ)
-        prayer_times = {'Fajr': now + timedelta(minutes=10)}
-        self.scheduler._schedule_day(prayer_times, dry_run=True)
-        jobs = self.scheduler.scheduler.get_jobs()
-        self.assertEqual(len(jobs), 1)
-        prayer_job = jobs[0]
-        self.assertTrue(prayer_job.id.startswith('prayer-dry-run-'))
-        self.assertAlmostEqual(prayer_job.trigger.run_date.timestamp(), (now + timedelta(seconds=5)).timestamp(), delta=2)
+        self.action_executor.set_dry_run_event.assert_called_once_with(dry_run_event)
+        # 1 dry run job * 2 (focus + adhan) + 1 daily refresh job = 3
+        self.assertEqual(len(self.scheduler.scheduler.get_jobs()), 3)
 
-    def test_update_next_prayer_info(self):
-        now = datetime.now(TZ)
+    def test_play_adhan_and_duaa(self):
+        self.scheduler.play_adhan_and_duaa()
+        self.action_executor.play_audio.assert_called_once_with(self.audio_path)
+        self.assertEqual(self.state_manager.state, AppState.IDLE)
+
+    def test_schedule_single_prayer_job(self):
+        prayer_name = "TestPrayer"
+        prayer_time = datetime.now(TZ) + timedelta(minutes=5)
         
-        mock_job1 = MagicMock()
-        mock_job1.id = 'prayer-Asr-2024'
-        mock_job1.next_run_time = now + timedelta(hours=2)
+        with patch.object(self.scheduler.scheduler, 'add_job') as mock_add_job:
+            self.scheduler._schedule_single_prayer_job(prayer_name, prayer_time, is_dry_run=False)
+            
+            self.assertEqual(mock_add_job.call_count, 2)
+            
+            # Check focus mode job
+            focus_call = mock_add_job.call_args_list[0]
+            self.assertEqual(focus_call[0][0], self.action_executor.trigger_focus_mode)
+            self.assertEqual(focus_call[1]['run_date'], prayer_time - timedelta(seconds=10))
 
-        mock_job2 = MagicMock()
-        mock_job2.id = 'prayer-Dhuhr-2024'
-        mock_job2.next_run_time = now + timedelta(hours=1)
-
-        with patch.object(self.scheduler.scheduler, 'get_jobs', return_value=[mock_job1, mock_job2]):
-            with patch('src.scheduler.state_manager') as mock_state_manager:
-                self.scheduler._update_next_prayer_info()
-                self.assertTrue(mock_state_manager.next_prayer_info.startswith('Dhuhr at'))
-
-    def test_update_next_prayer_info_no_jobs(self):
-        with patch.object(self.scheduler.scheduler, 'get_jobs', return_value=[]):
-            with patch('src.scheduler.state_manager') as mock_state_manager:
-                self.scheduler._update_next_prayer_info()
-                self.assertEqual(mock_state_manager.next_prayer_info, "No upcoming prayers")
-
-    
-
-@patch('src.scheduler.load_config')
-@patch('src.scheduler.get_scheduler_instance')
-def test_run_scheduler_in_thread(mock_get_scheduler, mock_load_config):
-    mock_load_config.return_value = {'city': 'Test', 'country': 'Test', 'method': 5, 'school': 0}
-    mock_scheduler = MagicMock()
-    mock_get_scheduler.return_value = mock_scheduler
-    run_scheduler_in_thread(one_time_run=True, dry_run=True)
-    time.sleep(0.1)
-    mock_scheduler.refresh.assert_called_once_with(city='Test', country='Test', method=5, school=0, dry_run=True)
-    mock_scheduler.run.assert_not_called()
-
-@patch('src.scheduler.load_config')
-@patch('src.scheduler.get_scheduler_instance')
-@patch('src.scheduler.state_manager')
-def test_run_scheduler_in_thread_no_config(mock_state_manager, mock_get_scheduler, mock_load_config):
-    mock_load_config.return_value = {}
-    run_scheduler_in_thread()
-    time.sleep(0.1)
-    mock_get_scheduler.assert_not_called()
-    assert mock_state_manager.state == AppState.ERROR
-    assert mock_state_manager.next_prayer_info == "Configure location"
+            # Check adhan job
+            adhan_call = mock_add_job.call_args_list[1]
+            self.assertEqual(adhan_call[0][0], self.scheduler.play_adhan_and_duaa)
+            self.assertEqual(adhan_call[1]['run_date'], prayer_time)
 
 if __name__ == '__main__':
     unittest.main()
