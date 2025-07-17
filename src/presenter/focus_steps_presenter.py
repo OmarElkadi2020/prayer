@@ -40,7 +40,7 @@ def load_steps_from_file(file_path):
     
     return steps
 
-STEPS_FILE_PATH = str(resources.files('config').joinpath('steps_content.txt'))
+STEPS_FILE_PATH = str(resources.files('src.config').joinpath('steps_content.txt'))
 STEPS = load_steps_from_file(STEPS_FILE_PATH)
 
 class FocusStepsPresenter:

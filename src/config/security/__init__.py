@@ -88,9 +88,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument("--country", default=loaded_config.country, help="Country for prayer time calculations.")
     ap.add_argument("--method", type=int, default=loaded_config.method, help="Calculation method for prayer times (e.g., 3 for Muslim World League).")
     ap.add_argument("--school", type=int, default=loaded_config.school, help="School for Asr prayer calculation (e.g., 0 for Shafii, 1 for Hanafi).")
-    ap.add_argument("--audio", default=adhan_path(), help="Path to the Adhan audio file.")
+    ap.add_argument("--audio", default=str(DEFAULT_ADHAN_PATH), help="Path to the Adhan audio file.")
     ap.add_argument("--dry-run", action="store_true", help="Run the scheduler in dry-run mode for testing.")
     ap.add_argument("--no-net-off", action="store_true", help="Do not turn off network during focus mode.")
+    ap.add_argument("--custom-audio-path", default=loaded_config.custom_audio_path, help="Path to a custom Adhan audio file.")
+    ap.add_argument("--google-calendar-id", default=loaded_config.google_calendar_id, help="Google Calendar ID to use for events.")
+    ap.add_argument("--run-mode", default=loaded_config.run_mode, choices=["background", "foreground"], help="Run mode of the application (background or foreground).")
     
     ap.add_argument("--log-level", default=loaded_config.log_level, choices=["DEBUG","INFO","WARNING","ERROR"], help="Set the logging level.")
     
@@ -99,8 +102,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     # Add a reauthenticate flag
     ap.add_argument("--reauthenticate-gcal", action="store_true", help="Forces re-authentication for Google Calendar.")
     
-    # Load from config file if it exists
-    config = load_config()
     ap.add_argument("--focus-now", action="store_true", help="Run a focus session immediately.")
     ns = ap.parse_args(argv)
 
@@ -113,5 +114,3 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 # --- constants -------------------------------------------------------------
 CREDENTIALS_PATH = os.path.join(CONFIG_DIR, 'credentials.json')
 TOKEN_PATH = os.path.join(CONFIG_DIR, 'token.json')
-LOG_LEVEL = load_config().log_level
-LOG.setLevel(LOG_LEVEL)
