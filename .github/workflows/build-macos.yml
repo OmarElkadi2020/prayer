@@ -43,7 +43,7 @@ jobs:
         chmod 777 /tmp/pyinstaller
 
     - name: Build application executable
-      run: pyinstaller --noconfirm PrayerPlayer.spec
+      run: pyinstaller --noconfirm --onefile PrayerPlayer.spec
 
     - name: Set up token for dry run
       run: |
