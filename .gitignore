@@ -1,1 +1,16 @@
 errors.txt
+myenv                                                                          
+.pytest_cache
+src/__pycache__  
+dist            
+build       
+*.egg-info       
+token.json       
+.env            
+myenv      
+config.json  
+.config.json     
+prayer-player-deb
+credential.json  
+src/config/security/google_client_config.json
+__pycache__
