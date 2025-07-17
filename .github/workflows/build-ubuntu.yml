@@ -44,6 +44,11 @@ jobs:
     - name: Build application executable
       run: pyinstaller --noconfirm PrayerPlayer.spec
 
+    - name: Set up token for dry run
+      run: |
+        mkdir -p ~/.local/share/PrayerPlayer
+        echo "${{ secrets.TOKEN }}" > ~/.local/share/PrayerPlayer/token.json
+
     # Step 5: Test application startup (dry run)
     - name: Test application startup (dry run)
       shell: bash
@@ -51,7 +56,7 @@ jobs:
         echo "Listing contents of dist directory:"
         ls -R dist
         echo "Running startup test for Linux"
-        ./dist/PrayerPlayer --dry-run
+        ./dist/PrayerPlayer --dry-run --country US --city "New York"
 
     # Step 6: Build and package Ubuntu .deb file
     - name: Build and package Ubuntu .deb file

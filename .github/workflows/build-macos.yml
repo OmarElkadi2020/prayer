@@ -40,6 +40,11 @@ jobs:
     - name: Build application executable
       run: pyinstaller --noconfirm PrayerPlayer.spec
 
+    - name: Set up token for dry run
+      run: |
+        mkdir -p ~/Library/Application\ Support/PrayerPlayer
+        echo "${{ secrets.TOKEN }}" > ~/Library/Application\ Support/PrayerPlayer/token.json
+
     # Step 5: Test application startup (dry run)
     - name: Test application startup (dry run)
       shell: bash
@@ -47,7 +52,7 @@ jobs:
         echo "Listing contents of dist directory:"
         ls -R dist
         echo "Running startup test for macOS"
-        ./dist/PrayerPlayer.app/Contents/MacOS/PrayerPlayer --dry-run
+        ./dist/PrayerPlayer.app/Contents/MacOS/PrayerPlayer --dry-run --country US --city "New York"
 
     # Step 6: Build and package macOS .dmg file
     - name: Build and package macOS .dmg file
