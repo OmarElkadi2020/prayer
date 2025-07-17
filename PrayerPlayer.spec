@@ -5,8 +5,7 @@ from PyInstaller.utils.hooks import collect_all
 datas = [('src/assets', 'src/assets'), ('src/config', 'src/config')]
 binaries = []
 hiddenimports = ['src.auth', 'src.calendar_api', 'src.config', 'src.platform', 'src.gui', 'src.state', 'src.tray_icon']
-hiddenimports += collect_submodules('PySide6.Qt.plugins.platforms')
-hiddenimports += collect_submodules('PySide6.Qt.plugins.xcbglintegrations')
+
 
 tmp_ret = collect_all('PySide6')
 
