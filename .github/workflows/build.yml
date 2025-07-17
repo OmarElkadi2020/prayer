@@ -45,7 +45,7 @@ jobs:
     # This step runs for all operating systems, but the path separator for --add-data
     # is different between Windows (;) and Unix-based systems (:).
     - name: Build application executable
-      run: pyinstaller --noconfirm PrayerPlayer.spec
+      run: pyinstaller --noconfirm --collect-all PySide6 --collect-submodules PySide6.Qt.plugins.platforms --collect-submodules PySide6.Qt.plugins.xcbglintegrations PrayerPlayer.spec
 
     # NEW STEP: Test application startup (dry run)
     - name: Test application startup (dry run)
@@ -102,7 +102,7 @@ jobs:
         Name=Prayer Player
         Exec=bash -c "/usr/local/bin/PrayerPlayer"
         Icon=prayer-player
-        Type=Application
+        Type=Application;
         Categories=Utility;
         EOF
 
@@ -142,6 +142,13 @@ jobs:
           --app-drop-link 600 185 \
           "dist/PrayerPlayer.dmg" \
           "dist/PrayerPlayer.app"
+
+    - name: Test macOS application startup (dry run)
+      if: matrix.os == 'macos-latest'
+      shell: bash
+      run: |
+        echo "Running startup test for macOS"
+        ./dist/PrayerPlayer.app/Contents/MacOS/PrayerPlayer --dry-run
 
     # --- Artifact Upload Steps ---
     - name: Upload Windows Artifact
