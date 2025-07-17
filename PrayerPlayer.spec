@@ -8,7 +8,15 @@ hiddenimports = ['src.auth', 'src.calendar_api', 'src.config', 'src.platform', '
 hiddenimports += collect_submodules('PySide6.Qt.plugins.platforms')
 hiddenimports += collect_submodules('PySide6.Qt.plugins.xcbglintegrations')
 tmp_ret = collect_all('PySide6')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+
+# Filter out QtWebEngine related components
+filtered_datas = [d for d in tmp_ret[0] if 'QtWebEngine' not in d[0]]
+filtered_binaries = [b for b in tmp_ret[1] if 'QtWebEngine' not in b[0]]
+filtered_hiddenimports = [h for h in tmp_ret[2] if 'QtWebEngine' not in h]
+
+datas += filtered_datas
+binaries += filtered_binaries
+hiddenimports += filtered_hiddenimports
 
 
 a = Analysis(
