@@ -1,17 +1,33 @@
 # -*- mode: python ; coding: utf-8 -*-
 import sys
-from PyInstaller.utils.hooks import collect_submodules
-from PyInstaller.utils.hooks import collect_all
+from PyInstaller.utils.hooks import collect_submodules, collect_all
+from PySide6 import QtCore
 
+# --- Common Configuration ---
 datas = [('src/assets', 'src/assets'), ('src/config', 'src/config')]
 binaries = []
-hiddenimports = ['src.auth', 'src.calendar_api', 'src.config', 'src.platform', 'src.gui', 'src.state', 'src.tray_icon']
-hiddenimports += collect_submodules('PySide6.Qt.plugins.platforms')
-hiddenimports += collect_submodules('PySide6.Qt.plugins.xcbglintegrations')
+hiddenimports = [
+    'src.auth', 'src.calendar_api', 'src.config', 'src.platform',
+    'src.gui', 'src.state', 'src.tray_icon'
+]
+
+# --- Platform-Specific Configuration ---
+if sys.platform == 'darwin':
+    # On macOS, explicitly include the QtWebEngineCore framework as a binary
+    # to handle symlink issues correctly.
+    qt_web_engine_path = QtCore.QLibraryInfo.path(QtCore.QLibraryInfo.LibraryPath.LibrariesPath)
+    binaries += [(f'{qt_web_engine_path}/QtWebEngineCore.framework', 'PySide6/Qt/lib')]
+    hiddenimports += collect_submodules('PySide6.Qt.plugins.platforms')
+elif sys.platform == 'linux':
+    hiddenimports += collect_submodules('PySide6.Qt.plugins.xcbglintegrations')
+
+# Collect all other PySide6 data
 tmp_ret = collect_all('PySide6')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+datas += tmp_ret[0]
+binaries += tmp_ret[1]
+hiddenimports += tmp_ret[2]
 
-
+# --- PyInstaller Analysis ---
 a = Analysis(
     ['src/__main__.py'],
     pathex=[],
@@ -49,6 +65,7 @@ exe = EXE(
     icon='src/assets/mosque.png',
 )
 
+# --- macOS App Bundle ---
 if sys.platform == 'darwin':
     app = BUNDLE(
         exe,
