@@ -16,6 +16,6 @@ argcomplete==3.3.0
 PySide6
 pydantic
 pydub
-simpleaudio
 Pillow
 appdirs
+playsound
