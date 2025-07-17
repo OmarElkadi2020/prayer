@@ -37,6 +37,14 @@ a = Analysis(
 )
 pyz = PYZ(a.pure)
 
+import platform
+
+# Set the runtime temporary directory based on the operating system
+if platform.system() == "Windows":
+    runtime_tmpdir = None  # Use the default temp directory on Windows
+else:
+    runtime_tmpdir = '/tmp/pyinstaller'  # Use a dedicated directory on macOS and Linux
+
 exe = EXE(
     pyz,
     a.scripts,
@@ -49,7 +57,7 @@ exe = EXE(
     strip=False,
     upx=True,
     upx_exclude=[],
-    runtime_tmpdir='/tmp/pyinstaller',
+    runtime_tmpdir=runtime_tmpdir,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
