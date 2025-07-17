@@ -1,5 +1,5 @@
 # A unique name for the workflow.
-name: Build and Release Prayer Player
+name: Build and Release Prayer Player (Ubuntu)
 
 # Triggers the workflow on push or pull request events for the main branch.
 on:
@@ -12,11 +12,8 @@ on:
 
 jobs:
   build:
-    # This job runs on a matrix of operating systems to build for each platform.
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ ubuntu-22.04, windows-latest, macos-latest ]
+    # This job runs on Ubuntu to build for Linux.
+    runs-on: ubuntu-22.04
 
     steps:
     # Step 1: Check out the repository code.
@@ -31,7 +28,6 @@ jobs:
 
     # Step 3: Install all required Python dependencies from requirements files.
     - name: Install Linux GUI dependencies
-      if: matrix.os == 'ubuntu-22.04'
       run: |
         sudo apt-get update
         sudo apt-get install -y libegl1 libpulse0 libxcb-cursor0 libasound2-dev
@@ -42,41 +38,23 @@ jobs:
         pip install -r requirements-dev.txt
 
     # Step 4: Build the application executable using PyInstaller.
-    # This step runs for all operating systems, but the path separator for --add-data
-    # is different between Windows (;) and Unix-based systems (:).
     - name: Create Google Client Config from secret
       run: echo "${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}" > src/config/security/google_client_config.json
 
     - name: Build application executable
       run: pyinstaller --noconfirm PrayerPlayer.spec
 
-    # NEW STEP: Test application startup (dry run)
+    # Step 5: Test application startup (dry run)
     - name: Test application startup (dry run)
       shell: bash
       run: |
         echo "Listing contents of dist directory:"
         ls -R dist
-        echo "Running startup test for ${{ runner.os }}"
-        if [[ "${{ runner.os }}" == "Windows" ]]; then
-          ./dist/PrayerPlayer.exe --dry-run
-        elif [[ "${{ runner.os }}" == "Linux" ]]; then
-          ./dist/PrayerPlayer --dry-run
-        elif [[ "${{ runner.os }}" == "macOS" ]]; then
-          ./dist/PrayerPlayer.app/Contents/MacOS/PrayerPlayer --dry-run
-        fi
+        echo "Running startup test for Linux"
+        ./dist/PrayerPlayer --dry-run
 
-    # --- Windows-Specific Steps ---
-    - name: Install Inno Setup for Windows installer
-      if: matrix.os == 'windows-latest'
-      run: choco install innosetup --no-progress
-
-    - name: Compile Windows installer
-      if: matrix.os == 'windows-latest'
-      run: iscc "deployment\windows\setup.iss"
-
-    # --- Ubuntu-Specific Steps ---
+    # Step 6: Build and package Ubuntu .deb file
     - name: Build and package Ubuntu .deb file
-      if: matrix.os == 'ubuntu-22.04'
       shell: bash
       run: |
         # Exit immediately if a command fails.
@@ -128,44 +106,9 @@ jobs:
         echo "--- Final .deb artifact ---"
         ls -l dist/
 
-    # --- macOS-Specific Steps ---
-    - name: Build and package macOS .dmg file
-      if: matrix.os == 'macos-latest'
-      shell: bash
-      run: |
-        # Install create-dmg tool using Homebrew.
-        brew install create-dmg
-
-        # Create the final .dmg installer.
-        create-dmg \
-          --volname "PrayerPlayer Installer" \
-          --window-pos 200 120 \
-          --window-size 800 400 \
-          --icon-size 100 \
-          --icon "PrayerPlayer.app" 200 190 \
-          --hide-extension "PrayerPlayer.app" \
-          --app-drop-link 600 185 \
-          "dist/PrayerPlayer.dmg" \
-          "dist/PrayerPlayer.app"
-
-    # --- Artifact Upload Steps ---
-    - name: Upload Windows Artifact
-      if: matrix.os == 'windows-latest'
-      uses: actions/upload-artifact@v4
-      with:
-        name: prayer-player-windows
-        path: deployment/windows/Output/*.exe
-
+    # Step 7: Upload Ubuntu Artifact
     - name: Upload Ubuntu Artifact
-      if: matrix.os == 'ubuntu-22.04'
       uses: actions/upload-artifact@v4
       with:
         name: prayer-player-ubuntu
         path: dist/*.deb
-
-    - name: Upload macOS Artifact
-      if: matrix.os == 'macos-latest'
-      uses: actions/upload-artifact@v4
-      with:
-        name: prayer-player-macos
-        path: dist/*.dmg
