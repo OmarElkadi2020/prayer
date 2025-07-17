@@ -73,7 +73,7 @@ def save_config(config: Config):
 LOG = logging.getLogger("adhan")
 # Ensure handlers are added only once to prevent duplicate log messages
 if not LOG.handlers:
-    _log_stream = logging.StreamHandler(sys.stdout, encoding='utf-8')
+    _log_stream = logging.StreamHandler(sys.stdout)
     _log_stream.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s - %(message)s"))
     LOG.addHandler(_log_stream)
 

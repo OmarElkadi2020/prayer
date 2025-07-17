@@ -157,7 +157,7 @@ class PrayerScheduler:
             id=f"prayer-{job_base_id}"
         )
         if is_dry_run:
-            LOG.info(f"🗓️  Dry run prayer simulation scheduled at {at.strftime('%H:%M:%S')}")
+            LOG.info(f"Dry run prayer simulation scheduled at {at.strftime('%H:%M:%S')}")
         else:
             LOG.info(f"🗓️  {name:<8s} prayer and focus sequence at {at.strftime('%H:%M')}")
 
@@ -176,7 +176,7 @@ class PrayerScheduler:
                 at=slot,
                 is_dry_run=True
             )
-            LOG.info(f"🗓️  Dry run prayer and focus sequence scheduled at {slot.strftime('%H:%M:%S')}")
+            LOG.info(f"Dry run prayer and focus sequence scheduled at {slot.strftime('%H:%M:%S')}")
             return
 
         # Sort by time, not by name, to process chronologically
