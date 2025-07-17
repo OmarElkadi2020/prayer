@@ -2,22 +2,11 @@
 from PyInstaller.utils.hooks import collect_submodules
 from PyInstaller.utils.hooks import collect_all
 
-import os
-import PySide6
-
-pyside6_path = os.path.dirname(PySide6.__file__)
-qt_plugins_path = os.path.join(pyside6_path, 'Qt', 'plugins')
-platforms_plugin_path = os.path.join(qt_plugins_path, 'platforms')
-xcbglintegrations_plugin_path = os.path.join(qt_plugins_path, 'xcbglintegrations')
-
-datas = [
-    ('src/assets', 'src/assets'),
-    ('src/config', 'src/config'),
-    (platforms_plugin_path, 'PySide6/Qt/plugins/platforms'),
-    (xcbglintegrations_plugin_path, 'PySide6/Qt/plugins/xcbglintegrations')
-]
+datas = [('src/assets', 'src/assets'), ('src/config', 'src/config')]
 binaries = []
 hiddenimports = ['src.auth', 'src.calendar_api', 'src.config', 'src.platform', 'src.gui', 'src.state', 'src.tray_icon']
+hiddenimports += collect_submodules('PySide6.Qt.plugins.platforms')
+hiddenimports += collect_submodules('PySide6.Qt.plugins.xcbglintegrations')
 
 tmp_ret = collect_all('PySide6')
 
