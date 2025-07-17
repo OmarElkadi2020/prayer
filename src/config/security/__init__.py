@@ -84,8 +84,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     
     loaded_config = load_config()
     
-    ap.add_argument("--city", default=loaded_config.city, help="City for prayer time calculations.")
-    ap.add_argument("--country", default=loaded_config.country, help="Country for prayer time calculations.")
+    ap.add_argument("--city", help="City for prayer time calculations.")
+    ap.add_argument("--country", help="Country for prayer time calculations.")
     ap.add_argument("--method", type=int, default=loaded_config.method, help="Calculation method for prayer times (e.g., 3 for Muslim World League).")
     ap.add_argument("--school", type=int, default=loaded_config.school, help="School for Asr prayer calculation (e.g., 0 for Shafii, 1 for Hanafi).")
     ap.add_argument("--audio", default=str(DEFAULT_ADHAN_PATH), help="Path to the Adhan audio file.")

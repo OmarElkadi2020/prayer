@@ -64,6 +64,12 @@ def main(argv: list[str] | None = None) -> int:
 
     # --- Composition Root ---
     config = load_config()
+
+    # Override config with CLI arguments if provided
+    if args.city: 
+        config.city = args.city
+    if args.country:
+        config.country = args.country
     
     # Initialize services
     calendar_service = None
