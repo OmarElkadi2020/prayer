@@ -52,7 +52,7 @@ jobs:
         echo "Listing contents of dist directory:"
         ls -R dist
         echo "Running startup test for macOS"
-        ./dist/PrayerPlayer.app/Contents/MacOS/PrayerPlayer --dry-run --country US --city "New York"
+        ./dist/PrayerPlayer --dry-run --country US --city "New York"
 
     # Step 6: Build and package macOS .dmg file
     - name: Build and package macOS .dmg file
