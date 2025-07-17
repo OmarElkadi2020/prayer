@@ -93,18 +93,18 @@ def run_tests():
     run_command([PYTHON_EXECUTABLE, "-m", "pytest"], "Running pytest")
 
 def copy_credentials_file(app_name, app_author, user_data_dir_func):
-    """Copies credentials.json from project root to user data directory if it exists."""
-    project_root_credentials = os.path.join(os.getcwd(), 'credentials.json')
+    """Copies google_client_config.json from project root to user data directory if it exists."""
+    project_root_credentials = os.path.join(os.getcwd(), 'google_client_config.json')
     user_data_credentials_dir = user_data_dir_func(app_name, app_author)
-    user_data_credentials_path = os.path.join(user_data_credentials_dir, 'credentials.json')
+    user_data_credentials_path = os.path.join(user_data_credentials_dir, 'google_client_config.json')
 
     if os.path.exists(project_root_credentials):
-        print(f"--- Copying credentials.json to {user_data_credentials_dir} ---")
+        print(f"--- Copying google_client_config.json to {user_data_credentials_dir} ---")
         os.makedirs(user_data_credentials_dir, exist_ok=True)
         shutil.copy(project_root_credentials, user_data_credentials_path)
-        print("credentials.json copied successfully.")
+        print("google_client_config.json copied successfully.")
     else:
-        print("--- No credentials.json found in project root. Skipping copy. ---")
+        print("--- No google_client_config.json found in project root. Skipping copy. ---")
         print(f"Please place your Google API credentials file at: {user_data_credentials_path}")
 
 def show_completion_message():

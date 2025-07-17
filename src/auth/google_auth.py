@@ -42,13 +42,13 @@ def get_google_credentials(reauthenticate=False):
         else:
             # Check if the credentials file exists in the user's config directory or the project root.
             try:
-                with resources.path('src.config.security', 'credentials.json') as credentials_path:
+                with resources.path('src.config.security', 'google_client_config.json') as credentials_path:
                     flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
                     creds = flow.run_local_server(port=0)
             except FileNotFoundError:
                 message = (
                     "Google API credentials file not found within the application bundle.\n\n"
-                    "Please ensure the application is correctly packaged or that 'src/config/security/credentials.json' exists in development mode."
+                    "Please ensure the application is correctly packaged or that 'src/config/security/google_client_config.json' exists in development mode."
                 )
                 raise CredentialsNotFoundError(message)
             except Exception as e:

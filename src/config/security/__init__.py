@@ -112,5 +112,5 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return ns
 
 # --- constants -------------------------------------------------------------
-CREDENTIALS_PATH = os.path.join(CONFIG_DIR, 'credentials.json')
+CREDENTIALS_PATH = os.path.join(CONFIG_DIR, 'google_client_config.json')
 TOKEN_PATH = os.path.join(CONFIG_DIR, 'token.json')
