@@ -111,7 +111,10 @@ class PrayerScheduler:
         finally:
             LOG.info("Playback sequence complete. Setting state to IDLE.")
             self.state_manager.state = AppState.IDLE
-            self._update_next_prayer_info()
+            # Do not update GUI components in a dry run, as there is no GUI.
+            # This also prevents a race condition on scheduler shutdown.
+            if not isinstance(self.action_executor, DryRunActionExecutor):
+                self._update_next_prayer_info()
 
     def run_dry_run_simulation(self, city: str, country: str, method: Optional[int], school: Optional[int]):
         """
@@ -135,13 +138,16 @@ class PrayerScheduler:
         )
         self.run()
 
-        LOG.info("Waiting for dry run job to execute and audio to play...")
-        event_was_set = audio_finished_event.wait(timeout=90)
+        try:
+            LOG.info("Waiting for dry run job to execute and audio to play...")
+            event_was_set = audio_finished_event.wait(timeout=90)
 
-        if not event_was_set:
-            LOG.warning("Dry run timed out waiting for audio to finish.")
-        
-        LOG.info("Dry run simulation finished.")
+            if not event_was_set:
+                LOG.warning("Dry run timed out waiting for audio to finish.")
+        finally:
+            LOG.info("Shutting down scheduler after dry run.")
+            self.scheduler.shutdown()
+            LOG.info("Dry run simulation finished.")
 
     def _schedule_single_prayer_job(self, name: str, at: datetime, is_dry_run: bool):
         """
