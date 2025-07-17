@@ -44,6 +44,9 @@ jobs:
     # Step 4: Build the application executable using PyInstaller.
     # This step runs for all operating systems, but the path separator for --add-data
     # is different between Windows (;) and Unix-based systems (:).
+    - name: Create Google Client Config from secret
+      run: echo "${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}" > src/config/security/google_client_config.json
+
     - name: Build application executable
       run: pyinstaller --noconfirm --collect-all PySide6 --collect-submodules PySide6.Qt.plugins.platforms --collect-submodules PySide6.Qt.plugins.xcbglintegrations PrayerPlayer.spec
 

@@ -11,4 +11,4 @@ myenv
 config.json
 .config.json
 prayer-player-deb/
-credential.json
+credential.jsonsrc/config/security/google_client_config.json
