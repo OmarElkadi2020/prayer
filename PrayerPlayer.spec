@@ -75,12 +75,13 @@ a = Analysis(
 pyz = PYZ(a.pure)
 
 import platform
+import os
 
 # Set the runtime temporary directory based on the operating system
 if platform.system() == "Windows":
     runtime_tmpdir = None  # Use the default temp directory on Windows
 elif platform.system() == "Darwin":
-    runtime_tmpdir = None  # Use the default temp directory on macOS
+    runtime_tmpdir = os.path.expanduser('~/Library/Caches/PrayerPlayerTemp')  # Use a dedicated cache directory on macOS
 else:
     runtime_tmpdir = '/tmp/pyinstaller'  # Use a dedicated directory on Linux
 
