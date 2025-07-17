@@ -48,7 +48,7 @@ jobs:
       run: echo "${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}" > src/config/security/google_client_config.json
 
     - name: Build application executable
-      run: pyinstaller --noconfirm --collect-all PySide6 --collect-submodules PySide6.Qt.plugins.platforms --collect-submodules PySide6.Qt.plugins.xcbglintegrations PrayerPlayer.spec
+      run: pyinstaller --noconfirm PrayerPlayer.spec
 
     # NEW STEP: Test application startup (dry run)
     - name: Test application startup (dry run)
