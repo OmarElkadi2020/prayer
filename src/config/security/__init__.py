@@ -40,6 +40,7 @@ APP_NAME = "PrayerPlayer"
 APP_AUTHOR = "Omar"
 
 CONFIG_DIR = user_config_dir(APP_NAME, APP_AUTHOR)
+print(f"CONFIG_DIR: {CONFIG_DIR}")
 CONFIG_FILE_PATH = os.path.join(CONFIG_DIR, 'config.json')
 
 from src.config.schema import Config

@@ -38,7 +38,7 @@ jobs:
       run: echo "${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}" > src/config/security/google_client_config.json
 
     - name: Build application executable
-      run: pyinstaller --noconfirm --onefile PrayerPlayer.spec
+      run: pyinstaller --noconfirm  PrayerPlayer.spec
 
     - name: Set up token for dry run
       run: |
