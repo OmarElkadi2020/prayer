@@ -18,3 +18,4 @@ pydantic
 pydub
 simpleaudio
 Pillow
+appdirs
