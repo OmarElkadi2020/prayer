@@ -54,6 +54,8 @@ jobs:
     - name: Test application startup (dry run)
       shell: bash
       run: |
+        echo "Listing contents of dist directory:"
+        ls -R dist
         echo "Running startup test for ${{ runner.os }}"
         if [[ "${{ runner.os }}" == "Windows" ]]; then
           ./dist/PrayerPlayer.exe --dry-run
@@ -145,13 +147,6 @@ jobs:
           --app-drop-link 600 185 \
           "dist/PrayerPlayer.dmg" \
           "dist/PrayerPlayer.app"
-
-    - name: Test macOS application startup (dry run)
-      if: matrix.os == 'macos-latest'
-      shell: bash
-      run: |
-        echo "Running startup test for macOS"
-        ./dist/PrayerPlayer.app/Contents/MacOS/PrayerPlayer --dry-run
 
     # --- Artifact Upload Steps ---
     - name: Upload Windows Artifact
