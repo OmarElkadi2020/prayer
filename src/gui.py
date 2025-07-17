@@ -425,11 +425,17 @@ class SettingsWindow(QWidget):
             if index != -1:
                 self.calendar_combo.setCurrentIndex(index)
 
-def main():
-    app = QApplication.instance() or QApplication(sys.argv)
+def main(app: QApplication | None = None):
+    if app is None:
+        app = QApplication.instance() or QApplication(sys.argv)
+    
     gui = SettingsWindow()
     gui.show()
-    sys.exit(app.exec())
+    
+    if app.exec() != 0:
+        LOG.error("Application exited with an error.")
+        sys.exit(1)
+    sys.exit(0)
 
 if __name__ == "__main__":
     main()

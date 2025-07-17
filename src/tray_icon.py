@@ -71,7 +71,7 @@ def create_q_icon(base_path, state: AppState):
         return QIcon(pixmap)
 
 # ICONS will be initialized inside setup_tray_icon after QApplication is created.
-ICONS = {}
+# ICONS = {}
 
 # --- GUI Thread Safety ---
 # Use a QObject with a signal to safely update the GUI from a background thread.
@@ -128,19 +128,51 @@ def quit_app(checked=False):
     LOG.info("Quit action triggered from tray icon menu.") # Changed to LOG.info
     QApplication.instance().quit()
 
+
 def setup_tray_icon(argv: list[str] | None = None, scheduler_instance: scheduler.PrayerScheduler = None):
     """
     Initializes the QApplication and the system tray icon.
     This is now the main entry point for any GUI-related activity.
     It handles argument parsing and decides the application's behavior.
     """
-    app = QApplication(sys.argv if argv is None else [sys.argv[0]] + argv)
+    app = QApplication.instance() or QApplication(sys.argv if argv is None else [sys.argv[0]] + argv)
     app.setQuitOnLastWindowClosed(False)
 
+    # Move create_q_icon and ICONS initialization inside here
+    def create_q_icon(base_path, state: AppState):
+        """Creates a dynamic QIcon by adding a colored dot to the base image."""
+        try:
+            pil_image = Image.open(base_path).convert("RGBA")
+            if state != AppState.IDLE:
+                draw = ImageDraw.Draw(pil_image)
+                width, height = pil_image.size
+                dot_radius = width // 6
+                dot_pos = (width - dot_radius * 2, height - dot_radius * 2)
+                
+                color = {
+                    AppState.SYNCING: "blue",
+                    AppState.PRAYER_TIME: "green",
+                    AppState.ERROR: "red",
+                }.get(state, "transparent")
 
-    # --- Normal GUI Mode ---
+                draw.ellipse(
+                    (dot_pos[0], dot_pos[1], dot_pos[0] + dot_radius*2, dot_pos[1] + dot_radius*2),
+                    fill=color,
+                    outline="white"
+                )
+            
+            # Convert PIL image to QPixmap for use in QIcon
+            qimage = ImageQt(pil_image)
+            pixmap = QPixmap.fromImage(qimage)
+            return QIcon(pixmap)
+            
+        except FileNotFoundError:
+            # Return a placeholder QIcon if the base icon is missing
+            pixmap = QPixmap(64, 64)
+            pixmap.fill(Qt.transparent)
+            return QIcon(pixmap)
+
     # Initialize icons after QApplication is created.
-    global ICONS
     ICONS = {state: create_q_icon(BASE_ICON_PATH, state) for state in AppState}
 
     # Create the tray icon and menu
