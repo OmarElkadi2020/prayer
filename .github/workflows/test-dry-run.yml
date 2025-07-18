@@ -54,15 +54,16 @@ jobs:
         echo "Listing contents of dist directory:"
         ls -R dist
         echo "Running startup test for ${{ inputs.os }}"
+        cd dist
         # Adjust the executable path based on the OS
         if [ "${{ inputs.os }}" == "ubuntu-22.04" ]; then
-          ./dist/PrayerPlayer --dry-run --country US --city "New York"
+          ./PrayerPlayer --dry-run --country US --city "New York"
         elif [ "${{ inputs.os }}" == "macos-latest" ]; then
-          if [ -d "./dist/PrayerPlayer.app" ]; then
-            ./dist/PrayerPlayer.app/Contents/MacOS/PrayerPlayer --dry-run --country US --city "New York"
+          if [ -d "./PrayerPlayer.app" ]; then
+            ./PrayerPlayer.app/Contents/MacOS/PrayerPlayer --dry-run --country US --city "New York"
           else
-            ./dist/PrayerPlayer --dry-run --country US --city "New York"
+            ./PrayerPlayer --dry-run --country US --city "New York"
           fi
         elif [ "${{ inputs.os }}" == "windows-latest" ]; then
-          ./dist/PrayerPlayer.exe --dry-run --country US --city "New York"
+          ./PrayerPlayer.exe --dry-run --country US --city "New York"
         fi

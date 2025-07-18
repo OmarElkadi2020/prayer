@@ -81,12 +81,7 @@ import os
 if platform.system() == "Windows":
     runtime_tmpdir = None  # Use the default temp directory on Windows
 else:
-    # Use the runner's temp directory if available, otherwise fallback for local builds
-    runner_temp = os.environ.get('RUNNER_TEMP')
-    if runner_temp:
-        runtime_tmpdir = os.path.join(runner_temp, 'pyinstaller')
-    else:
-        runtime_tmpdir = '/tmp/pyinstaller'
+    runtime_tmpdir = os.path.join(os.path.expanduser('~'), 'tmp', 'pyinstaller')
 
 exe = EXE(
     pyz,
