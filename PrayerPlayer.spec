@@ -77,12 +77,6 @@ pyz = PYZ(a.pure)
 import platform
 import os
 
-# Set the runtime temporary directory based on the operating system
-if platform.system() == "Windows":
-    runtime_tmpdir = None  # Use the default temp directory on Windows
-else:
-    runtime_tmpdir = os.path.join(os.path.expanduser('~'), 'tmp', 'pyinstaller')
-
 exe = EXE(
     pyz,
     a.scripts,
@@ -103,5 +97,4 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=['src/assets/mosque.png'],
-    runtime_tmpdir=runtime_tmpdir,
 )

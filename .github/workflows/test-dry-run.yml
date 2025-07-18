@@ -54,15 +54,20 @@ jobs:
         echo "Listing contents of dist directory:"
         ls -R dist
         echo "Running startup test for ${{ inputs.os }}"
+        
+        # Create a temporary directory and set TMPDIR for the application
+        APP_TMPDIR=$(mktemp -d)
+        
         cd dist
-        # Adjust the executable path based on the OS
+        
+        # Adjust the executable path and run with the correct TMPDIR
         if [ "${{ inputs.os }}" == "ubuntu-22.04" ]; then
-          ./PrayerPlayer --dry-run --country US --city "New York"
+          TMPDIR=$APP_TMPDIR ./PrayerPlayer --dry-run --country US --city "New York"
         elif [ "${{ inputs.os }}" == "macos-latest" ]; then
           if [ -d "./PrayerPlayer.app" ]; then
-            ./PrayerPlayer.app/Contents/MacOS/PrayerPlayer --dry-run --country US --city "New York"
+            TMPDIR=$APP_TMPDIR ./PrayerPlayer.app/Contents/MacOS/PrayerPlayer --dry-run --country US --city "New York"
           else
-            ./PrayerPlayer --dry-run --country US --city "New York"
+            TMPDIR=$APP_TMPDIR ./PrayerPlayer --dry-run --country US --city "New York"
           fi
         elif [ "${{ inputs.os }}" == "windows-latest" ]; then
           ./PrayerPlayer.exe --dry-run --country US --city "New York"
