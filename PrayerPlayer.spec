@@ -73,28 +73,39 @@ a = Analysis(
     optimize=0,
 )
 pyz = PYZ(a.pure)
-
-import platform
-import os
-
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
     [],
+    exclude_binaries=True,
     name='PrayerPlayer',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    upx_exclude=[],
     console=False,
     disable_windowed_traceback=False,
-    argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['src/assets/mosque.png'],
+    icon='src/assets/mosque.png'
 )
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='PrayerPlayer'
+)
+
+import platform
+if platform.system() == "Darwin":
+    app = BUNDLE(
+        coll,
+        name='PrayerPlayer.app',
+        icon='src/assets/mosque.png',
+        bundle_identifier='com.omar.prayerplayer'
+    )
