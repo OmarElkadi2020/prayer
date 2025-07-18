@@ -56,9 +56,9 @@ jobs:
         echo "Running startup test for ${{ inputs.os }}"
         # Adjust the executable path based on the OS
         if [ "${{ inputs.os }}" == "ubuntu-22.04" ]; then
-          ./dist/PrayerPlayer/PrayerPlayer --dry-run --country US --city "New York"
+          ./dist/PrayerPlayer --dry-run --country US --city "New York"
         elif [ "${{ inputs.os }}" == "macos-latest" ]; then
           ./dist/PrayerPlayer.app/Contents/MacOS/PrayerPlayer --dry-run --country US --city "New York"
         elif [ "${{ inputs.os }}" == "windows-latest" ]; then
-          ./dist/PrayerPlayer/PrayerPlayer.exe --dry-run --country US --city "New York"
+          ./dist/PrayerPlayer.exe --dry-run --country US --city "New York"
         fi

@@ -55,7 +55,11 @@ jobs:
 
     - name: Build application executable
       run: |
-        pyinstaller --noconfirm PrayerPlayer.spec
+        if [ "${{ inputs.os }}" == "macos-latest" ]; then
+          pyinstaller --noconfirm PrayerPlayer-mac.spec
+        else
+          pyinstaller --noconfirm PrayerPlayer.spec
+        fi
 
     - name: List dist directory
       run: ls -R dist/
