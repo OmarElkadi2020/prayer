@@ -63,6 +63,9 @@ jobs:
       run: |
         pyinstaller --noconfirm PrayerPlayer.spec
 
+    - name: List dist directory
+      run: ls -R dist/
+
     - name: Upload application executable artifact
       uses: actions/upload-artifact@v4
       with:

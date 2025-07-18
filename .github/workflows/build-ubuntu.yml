@@ -38,7 +38,7 @@ jobs:
     - name: Download application executable artifact
       uses: actions/download-artifact@v4
       with:
-        name: prayer-player-ubuntu-executable
+        name: prayer-player-ubuntu-22.04-executable
         path: dist
 
     - name: Build and package Ubuntu .deb file

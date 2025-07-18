@@ -80,10 +80,8 @@ import os
 # Set the runtime temporary directory based on the operating system
 if platform.system() == "Windows":
     runtime_tmpdir = None  # Use the default temp directory on Windows
-elif platform.system() == "Darwin":
-    pass
 else:
-    runtime_tmpdir = '/tmp/pyinstaller'  # Use a dedicated directory on Linux
+    runtime_tmpdir = '/tmp/pyinstaller'  # Use a dedicated directory on Linux/macOS
 
 exe = EXE(
     pyz,

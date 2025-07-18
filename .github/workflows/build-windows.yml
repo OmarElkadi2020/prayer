@@ -38,7 +38,7 @@ jobs:
     - name: Download application executable artifact
       uses: actions/download-artifact@v4
       with:
-        name: prayer-player-windows-executable
+        name: prayer-player-windows-latest-executable
         path: dist
 
     - name: Install Inno Setup for Windows installer
