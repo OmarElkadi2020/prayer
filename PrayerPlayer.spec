@@ -98,7 +98,6 @@ exe = EXE(
     strip=False,
     upx=True,
     upx_exclude=[],
-    runtime_tmpdir=runtime_tmpdir,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
