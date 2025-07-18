@@ -1,0 +1,54 @@
+# Reusable workflow for dry-run tests
+name: Test Dry Run
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        required: true
+        type: string
+    secrets:
+      TOKEN:
+        required: true
+
+jobs:
+  test-dry-run:
+    runs-on: ${{ inputs.os }}
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v3
+
+    - name: Download application executable artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: prayer-player-${{ inputs.os }}-executable
+        path: dist
+
+    - name: Set up token for dry run
+      run: |
+        if [ "${{ inputs.os }}" == "macos-latest" ]; then
+          mkdir -p ~/Library/Application\ Support/PrayerPlayer
+          echo "${{ secrets.TOKEN }}" > ~/Library/Application\ Support/PrayerPlayer/token.json
+        elif [ "${{ inputs.os }}" == "ubuntu-22.04" ]; then
+          mkdir -p ~/.local/share/PrayerPlayer
+          echo "${{ secrets.TOKEN }}" > ~/.local/share/PrayerPlayer/token.json
+        elif [ "${{ inputs.os }}" == "windows-latest" ]; then
+          mkdir -p "$env:APPDATA\PrayerPlayer"
+          echo "${{ secrets.TOKEN }}" | Out-File -FilePath "$env:APPDATA\PrayerPlayer\token.json" -Encoding utf8
+        fi
+
+    - name: Test application startup (dry run)
+      shell: bash
+      run: |
+        echo "Listing contents of dist directory:"
+        ls -R dist
+        echo "Running startup test for ${{ inputs.os }}"
+        # Adjust the executable path based on the OS
+        if [ "${{ inputs.os }}" == "ubuntu-22.04" ]; then
+          ./dist/PrayerPlayer --dry-run --country US --city "New York"
+        elif [ "${{ inputs.os }}" == "macos-latest" ]; then
+          ./dist/PrayerPlayer.app/Contents/MacOS/PrayerPlayer --dry-run --country US --city "New York"
+        elif [ "${{ inputs.os }}" == "windows-latest" ]; then
+          ./dist/PrayerPlayer.exe --dry-run --country US --city "New York"
+        fi
