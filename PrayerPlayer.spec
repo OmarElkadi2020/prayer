@@ -81,7 +81,12 @@ import os
 if platform.system() == "Windows":
     runtime_tmpdir = None  # Use the default temp directory on Windows
 else:
-    runtime_tmpdir = '/tmp/pyinstaller'  # Use a dedicated directory on Linux/macOS
+    # Use the runner's temp directory if available, otherwise fallback for local builds
+    runner_temp = os.environ.get('RUNNER_TEMP')
+    if runner_temp:
+        runtime_tmpdir = os.path.join(runner_temp, 'pyinstaller')
+    else:
+        runtime_tmpdir = '/tmp/pyinstaller'
 
 exe = EXE(
     pyz,
@@ -103,4 +108,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=['src/assets/mosque.png'],
+    runtime_tmpdir=runtime_tmpdir,
 )

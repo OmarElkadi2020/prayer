@@ -44,12 +44,6 @@ jobs:
         New-Item -ItemType Directory -Force -Path "$env:APPDATA\PrayerPlayer"
         Set-Content -Path "$env:APPDATA\PrayerPlayer\token.json" -Value "${{ secrets.TOKEN }}"
 
-    - name: Create runtime temporary directory
-      if: runner.os != 'Windows'
-      run: |
-        mkdir -p /tmp/pyinstaller
-        chmod 777 /tmp/pyinstaller
-
     - name: Make artifact executable
       if: runner.os != 'Windows'
       run: chmod +x dist/PrayerPlayer
