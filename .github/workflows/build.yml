@@ -73,7 +73,7 @@ jobs:
 
     - name: Create Google Client Config from secret (macOS/Linux)
       if: runner.os != 'Windows'
-      run: printf "%s" "${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}" > src/config/security/google_client_config.json
+      run: echo "${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}" | base64 -d > src/config/security/google_client_config.json
 
     - name: Create Google Client Config from secret (Windows)
       if: runner.os == 'Windows'
@@ -149,7 +149,7 @@ jobs:
           Architecture: amd64
           Maintainer: Omar <dev@omar.com>
           Description: Prayer times application that plays the Adhan.
-          Depends: libegl1, libpulse0, libxcb-cursor0, libasound2
+          Depends: libegl1, libpulse0, libxcb-cursor0, libasound2, libxcb-cursor0
           EOF
 
           # Create post-installation script
