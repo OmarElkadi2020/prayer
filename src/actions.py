@@ -10,20 +10,28 @@ from src.qt_utils import run_in_qt_thread
 
 # -- focus mode -----------------------------------------------------------
 
-@run_in_qt_thread
-def trigger_focus_mode():
-    """Triggers focus mode, ensuring it runs on the Qt GUI thread."""
-    LOG.info("Triggering focus mode for GUI.")
-    from src.focus_steps_view import FocusStepsView # Import locally to avoid circular dependency
-    from src.presenter.focus_steps_presenter import FocusStepsPresenter
-    # We need to hold a reference to the window, otherwise it might get garbage collected
-    if not hasattr(trigger_focus_mode, "_focus_window_instance") or not trigger_focus_mode._focus_window_instance.isVisible():
-        presenter = FocusStepsPresenter()
-        trigger_focus_mode._focus_window_instance = FocusStepsView(presenter, disable_sound=True) # Disable sound to avoid double sound with adhan
-        trigger_focus_mode._focus_window_instance.show()
-        trigger_focus_mode._focus_window_instance.activateWindow()
-    else:
-        trigger_focus_mode._focus_window_instance.activateWindow()
+def _create_trigger_focus_mode():
+    """Factory to create the trigger_focus_mode function with a persistent state."""
+    _focus_window_instance = None  # Closure to hold the window instance
+
+    @run_in_qt_thread
+    def trigger_focus_mode():
+        """Triggers focus mode, ensuring it runs on the Qt GUI thread."""
+        nonlocal _focus_window_instance
+        LOG.info("Triggering focus mode for GUI.")
+        from src.focus_steps_view import FocusStepsView  # Local import
+        from src.presenter.focus_steps_presenter import FocusStepsPresenter
+
+        if _focus_window_instance is None or not _focus_window_instance.isVisible():
+            presenter = FocusStepsPresenter()
+            _focus_window_instance = FocusStepsView(presenter, disable_sound=True)
+            _focus_window_instance.show()
+        
+        _focus_window_instance.activateWindow()
+
+    return trigger_focus_mode
+
+trigger_focus_mode = _create_trigger_focus_mode()
 
 
 def run_focus_steps(is_modal: bool = False) -> None:
