@@ -191,7 +191,7 @@ EOF
           Name=Prayer Player
           Exec=/opt/PrayerPlayer/PrayerPlayer
           Icon=prayer-player
-          Type=Application;
+          Type=Application
           Categories=Utility;
           EOF
 
