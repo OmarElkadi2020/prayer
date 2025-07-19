@@ -42,7 +42,7 @@ def get_google_credentials(reauthenticate=False):
         else:
             # Check if the credentials file exists in the user's config directory or the project root.
             try:
-                with resources.path('src.config.security', 'google_client_config.json') as credentials_path:
+                with resources.path('config.security', 'google_client_config.json') as credentials_path:
                     flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
                     creds = flow.run_local_server(port=0)
             except FileNotFoundError:

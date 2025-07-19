@@ -53,8 +53,8 @@ def get_asset_path(package, resource):
 from src.presenter.focus_steps_presenter import FocusStepsPresenter
 
 # --- Constants ---
-SOUND_PATH = get_asset_path('src.assets', 'complete_sound.wav')
-ICON_PATH = get_asset_path('src.assets', 'mosque.png')
+SOUND_PATH = get_asset_path('assets', 'complete_sound.wav')
+ICON_PATH = get_asset_path('assets', 'mosque.png')
 
 # ==================================================================
 # ❷ Main Application Window
