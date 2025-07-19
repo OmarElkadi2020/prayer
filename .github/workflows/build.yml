@@ -42,7 +42,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y libglib2.0-dev pkg-config libcairo2-dev libgirepository1.0-dev gobject-introspection libegl1 libpulse0 libxcb-cursor0 libasound2-dev gir1.2-gtk-3.0
+        sudo apt-get install -y libglib2.0-dev pkg-config libcairo2-dev libgirepository1.0-dev gobject-introspection libegl1 libpulse0 libxcb-cursor0 libasound2-dev gir1.2-gtk-3.0 gir1.2-glib-2.0
 
     - name: Get pip cache dir
       id: pip-cache
