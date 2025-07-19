@@ -1,10 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
-datas = [('src/assets', 'src/assets'), ('src/config', 'src/config')]
+datas = [('src/assets', 'assets'), ('src/config', 'config')]
 hiddenimports = ['src.auth', 'src.calendar_api', 'src.config', 'src.platform', 'src.gui', 'src.state', 'src.tray_icon']
 
 a = Analysis(
     ['src/__main__.py'],
-    pathex=[],
+    pathex=['src'],
     binaries=[],
     datas=datas,
     hiddenimports=hiddenimports,
