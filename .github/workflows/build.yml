@@ -73,7 +73,9 @@ jobs:
 
     - name: Create Google Client Config from secret (macOS/Linux)
       if: runner.os != 'Windows'
-      run: echo "${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}" | base64 -d > src/config/security/google_client_config.json
+      run: |
+        echo "DEBUG: GOOGLE_CLIENT_CONFIG_JSON secret (first 50 chars): ${{ secrets.GOOGLE_CLIENT_CONFIG_JSON | slice(0, 50) }}"
+        echo "${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}" | base64 -d > src/config/security/google_client_config.json
 
     - name: Create Google Client Config from secret (Windows)
       if: runner.os == 'Windows'
@@ -119,6 +121,8 @@ jobs:
         echo "Listing contents of dist directory:"
         ls -R dist
         echo "Running startup test for ${{ runner.os }}"
+        echo "DEBUG: sys.platform in Python:"
+        python -c "import sys; print(sys.platform)"
         if [ "${{ runner.os }}" == "Linux" ]; then
           ./dist/PrayerPlayer/PrayerPlayer --dry-run --country US --city "New York"
         elif [ "${{ runner.os }}" == "macOS" ]; then
@@ -186,7 +190,7 @@ jobs:
           Name=Prayer Player
           Exec=/opt/PrayerPlayer/PrayerPlayer
           Icon=prayer-player
-          Type=Application
+          Type=Application;
           Categories=Utility;
           EOF
 
