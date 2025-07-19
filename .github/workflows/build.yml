@@ -75,8 +75,8 @@ jobs:
       if: runner.os != 'Windows'
       run: |
         cat <<EOF > src/config/security/google_client_config.json
-${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}
-EOF
+        ${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}
+        EOF
 
     - name: Create Google Client Config from secret (Windows)
       if: runner.os == 'Windows'
