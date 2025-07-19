@@ -33,3 +33,13 @@ exe = EXE(
     entitlements_file=None,
     icon='src/assets/mosque.png'
 )
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='PrayerPlayer'
+)
