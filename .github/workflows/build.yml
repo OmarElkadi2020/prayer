@@ -12,30 +12,128 @@ jobs:  build-and-package:    strategy:      fail-fast: false      matrix:       
 
     - name: Install Linux GUI dependencies      if: runner.os == 'Linux'      run: |        sudo apt-get update        sudo apt-get install -y libegl1 libpulse0 libxcb-cursor0 libasound2-dev
 
-    - name: Cache Python dependencies      uses: actions/cache@v3      with:        path: ~/.cache/pip        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt', 'requirements-dev.txt') }}        restore-keys: |          ${{ runner.os }}-pip-
+    - name: Cache Python dependencies      uses: actions/cache@v3      with:        path: ~/.cache/pip        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt', 'requirements-dev.txt') }}        restore-keys: |
+          ${{ runner.os }}-pip-
 
     - name: Install dependencies      run: |        python -m pip install --upgrade pip setuptools wheel        pip install -r requirements.txt        pip install -r requirements-dev.txt
 
-    - name: Create Google Client Config from secret (macOS/Linux)      if: runner.os != 'Windows'      run: echo "${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}" > src/config/security/google_client_config.json
+    - name: Create Google Client Config from secret (macOS/Linux)
+      if: runner.os != 'Windows'
+      run: echo "${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}" > src/config/security/google_client_config.json
 
-    - name: Create Google Client Config from secret (Windows)      if: runner.os == 'Windows'      shell: pwsh      run: Set-Content -Path "src/config/security/google_client_config.json" -Value '${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}'
+    - name: Create Google Client Config from secret (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: Set-Content -Path "src/config/security/google_client_config.json" -Value '${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}'
 
-    - name: Build application executable      shell: bash      run: |        if [ "${{ runner.os }}" == "macOS" ]; then          pyinstaller --noconfirm PrayerPlayer-mac.spec        else          pyinstaller --noconfirm PrayerPlayer.spec        fi
+    - name: Build application executable
+      shell: bash
+      run: |
+        if [ "${{ runner.os }}" == "macOS" ]; then
+          pyinstaller --noconfirm PrayerPlayer-mac.spec
+        else
+          pyinstaller --noconfirm PrayerPlayer.spec
+        fi
 
-    - name: Set up token for dry run (macOS/Linux)      if: runner.os != 'Windows'      run: |        if [ "${{ runner.os }}" == "macOS" ]; then          mkdir -p "$HOME/Library/Application Support/PrayerPlayer"          echo "${{ secrets.TOKEN }}" > "$HOME/Library/Application Support/PrayerPlayer/token.json"        elif [ "${{ runner.os }}" == "Linux" ]; then          mkdir -p "$HOME/.local/share/PrayerPlayer"          echo "${{ secrets.TOKEN }}" > "$HOME/.local/share/PrayerPlayer/token.json"        fi
+    - name: Set up token for dry run (macOS/Linux)
+      if: runner.os != 'Windows'
+      run: |
+        if [ "${{ runner.os }}" == "macOS" ]; then
+          mkdir -p "$HOME/Library/Application Support/PrayerPlayer"
+          echo "${{ secrets.TOKEN }}" > "$HOME/Library/Application Support/PrayerPlayer/token.json"
+        elif [ "${{ runner.os }}" == "Linux" ]; then
+          mkdir -p "$HOME/.local/share/PrayerPlayer"
+          echo "${{ secrets.TOKEN }}" > "$HOME/.local/share/PrayerPlayer/token.json"
+        fi
 
-    - name: Set up token for dry run (Windows)      if: runner.os == 'Windows'      shell: pwsh      run: |        New-Item -ItemType Directory -Force -Path "$env:APPDATA\PrayerPlayer"        Set-Content -Path "$env:APPDATA\PrayerPlayer\token.json" -Value "${{ secrets.TOKEN }}"
+    - name: Set up token for dry run (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory -Force -Path "$env:APPDATA\PrayerPlayer"
+        Set-Content -Path "$env:APPDATA\PrayerPlayer\token.json" -Value "${{ secrets.TOKEN }}"
 
-    - name: Make artifact executable      if: runner.os != 'Windows'      run: chmod -R +x dist/
+    - name: Make artifact executable
+      if: runner.os != 'Windows'
+      run: chmod -R +x dist/
 
-    - name: Test application startup (dry run)      shell: bash      run: |        echo "Listing contents of dist directory:"        ls -R dist        echo "Running startup test for ${{ runner.os }}"        if [ "${{ runner.os }}" == "Linux" ]; then          ./dist/PrayerPlayer/PrayerPlayer --dry-run --country US --city "New York"        elif [ "${{ runner.os }}" == "macOS" ]; then          ./dist/PrayerPlayer.app/Contents/MacOS/PrayerPlayer --dry-run --country US --city "New York"        elif [ "${{ runner.os }}" == "Windows" ]; then          ./dist/PrayerPlayer/PrayerPlayer.exe --dry-run --country US --city "New York"        fi
+    - name: Test application startup (dry run)
+      shell: bash
+      run: |
+        echo "Listing contents of dist directory:"
+        ls -R dist
+        echo "Running startup test for ${{ runner.os }}"
+        if [ "${{ runner.os }}" == "Linux" ]; then
+          ./dist/PrayerPlayer/PrayerPlayer --dry-run --country US --city "New York"
+        elif [ "${{ runner.os }}" == "macOS" ]; then
+          ./dist/PrayerPlayer.app/Contents/MacOS/PrayerPlayer --dry-run --country US --city "New York"
+        elif [ "${{ runner.os }}" == "Windows" ]; then
+          ./dist/PrayerPlayer/PrayerPlayer.exe --dry-run --country US --city "New York"
+        fi
 
-    - name: Build and package Ubuntu .deb file      if: runner.os == 'Linux'      shell: bash      run: |          set -e          DEB_DIR="prayer-player-deb"          VERSION=$(python -c "from src.__version__ import __version__; print(__version__)")          mkdir -p "${DEB_DIR}/DEBIAN"          mkdir -p "${DEB_DIR}/opt/PrayerPlayer"          mkdir -p "${DEB_DIR}/usr/local/bin"          mkdir -p "${DEB_DIR}/usr/share/applications"          mkdir -p "${DEB_DIR}/usr/share/icons/hicolor/256x256/apps"          cat <<EOF > "${DEB_DIR}/DEBIAN/control"          Package: prayer-player          Version: ${VERSION}          Architecture: amd64          Maintainer: Omar <dev@omar.com>          Description: Prayer times application that plays the Adhan.          EOF          cat <<EOF > "${DEB_DIR}/usr/share/applications/prayer-player.desktop"          [Desktop Entry]          Name=Prayer Player          Exec=/usr/local/bin/PrayerPlayer          Icon=prayer-player          Type=Application;          Categories=Utility;          EOF          cp -r dist/PrayerPlayer/* "${DEB_DIR}/opt/PrayerPlayer/"          ln -s /opt/PrayerPlayer/PrayerPlayer "${DEB_DIR}/usr/local/bin/PrayerPlayer"          cp src/assets/mosque.png "${DEB_DIR}/usr/share/icons/hicolor/256x256/apps/prayer-player.png"          chmod -R 755 "${DEB_DIR}"          dpkg-deb --build "${DEB_DIR}"          mv "${DEB_DIR}.deb" "dist/prayer-player-${VERSION}-amd64.deb"          echo "--- Final .deb artifact ---"          ls -l dist/
+    - name: Build and package Ubuntu .deb file
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+          set -e
+          DEB_DIR="prayer-player-deb"
+          VERSION=$(python -c "from src.__version__ import __version__; print(__version__)")
+          mkdir -p "${DEB_DIR}/DEBIAN"
+          mkdir -p "${DEB_DIR}/opt/PrayerPlayer"
+          mkdir -p "${DEB_DIR}/usr/local/bin"
+          mkdir -p "${DEB_DIR}/usr/share/applications"
+          mkdir -p "${DEB_DIR}/usr/share/icons/hicolor/256x256/apps"
+          cat <<EOF > "${DEB_DIR}/DEBIAN/control"
+          Package: prayer-player
+          Version: ${VERSION}
+          Architecture: amd664
+          Maintainer: Omar <dev@omar.com>
+          Description: Prayer times application that plays the Adhan.
+          EOF
+          cat <<EOF > "${DEB_DIR}/usr/share/applications/prayer-player.desktop"
+          [Desktop Entry]
+          Name=Prayer Player
+          Exec=/usr/local/bin/PrayerPlayer
+          Icon=prayer-player
+          Type=Application;
+          Categories=Utility;
+          EOF
+          cp -r dist/PrayerPlayer/* "${DEB_DIR}/opt/PrayerPlayer/"
+          ln -s /opt/PrayerPlayer/PrayerPlayer "${DEB_DIR}/usr/local/bin/PrayerPlayer"
+          cp src/assets/mosque.png "${DEB_DIR}/usr/share/icons/hicolor/256x256/apps/prayer-player.png"
+          chmod -R 755 "${DEB_DIR}"
+          dpkg-deb --build "${DEB_DIR}"
+          mv "${DEB_DIR}.deb" "dist/prayer-player-${VERSION}-amd64.deb"
+          echo "--- Final .deb artifact ---"
+          ls -l dist/
 
-    - name: Build and package macOS .dmg file      if: runner.os == 'macOS'      shell: bash      run: |        brew install create-dmg        mv dist/PrayerPlayer.app dist/        create-dmg \          --volname "PrayerPlayer Installer" \          --window-pos 200 120 \          --window-size 800 400 \          --icon-size 100 \          --icon "PrayerPlayer.app" 200 190 \          --hide-extension "PrayerPlayer.app" \          --app-drop-link 600 185 \          "dist/PrayerPlayer.dmg" \          "dist/PrayerPlayer.app"
+    - name: Build and package macOS .dmg file
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        brew install create-dmg
+        mv dist/PrayerPlayer.app dist/
+        create-dmg \
+          --volname "PrayerPlayer Installer" \
+          --window-pos 200 120 \
+          --window-size 800 400 \
+          --icon-size 100 \
+          --icon "PrayerPlayer.app" 200 190 \
+          --hide-extension "PrayerPlayer.app" \
+          --app-drop-link 600 185 \
+          "dist/PrayerPlayer.dmg" \
+          "dist/PrayerPlayer.app"
 
-    - name: Install Inno Setup for Windows installer      if: runner.os == 'Windows'      run: choco install innosetup --no-progress
+    - name: Install Inno Setup for Windows installer
+      if: runner.os == 'Windows'
+      run: choco install innosetup --no-progress
 
-    - name: Compile Windows installer      if: runner.os == 'Windows'      run: iscc "deployment\windows\setup.iss"
+    - name: Compile Windows installer
+      if: runner.os == 'Windows'
+      run: iscc "deployment\windows\setup.iss"
 
-    - name: Upload Artifact      uses: actions/upload-artifact@v4      with:        name: ${{ matrix.asset_name }}        path: ${{ matrix.asset_path }}
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.asset_name }}
+        path: ${{ matrix.asset_path }}
