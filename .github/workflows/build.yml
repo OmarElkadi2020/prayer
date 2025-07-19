@@ -78,7 +78,9 @@ jobs:
     - name: Create Google Client Config from secret (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
-      run: Set-Content -Path "src/config/security/google_client_config.json" -Value '${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}'
+      run: |
+        $jsonContent = '${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}'
+        [System.IO.File]::WriteAllText("src/config/security/google_client_config.json", $jsonContent, [System.Text.Encoding]::UTF8)
 
     - name: Build application executable
       shell: bash
