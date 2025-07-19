@@ -172,7 +172,7 @@ EOF
           cat <<EOF > "${DEB_DIR}/DEBIAN/prerm"
           #!/bin/sh
           set -e
-          if [ "\$1" = "remove" ] || [ "\$1" = "purge" ]; then
+          if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
               echo "Updating icon cache after removal..."
               gtk-update-icon-cache -q /usr/share/icons/hicolor || true
               echo "Updating desktop database after removal..."
@@ -191,7 +191,7 @@ EOF
           Name=Prayer Player
           Exec=/opt/PrayerPlayer/PrayerPlayer
           Icon=prayer-player
-          Type=Application
+          Type=Application;
           Categories=Utility;
           EOF
 
