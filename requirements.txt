@@ -19,3 +19,4 @@ pydub
 Pillow
 appdirs
 playsound
+pygobject

@@ -42,12 +42,17 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y libegl1 libpulse0 libxcb-cursor0 libasound2-dev
+        sudo apt-get install -y libegl1 libpulse0 libxcb-cursor0 libasound2-dev gir1.2-gtk-3.0
+
+    - name: Get pip cache dir
+      id: pip-cache
+      run: echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
+      shell: bash
 
     - name: Cache Python dependencies
       uses: actions/cache@v3
       with:
-        path: ~/.cache/pip
+        path: ${{ steps.pip-cache.outputs.dir }}
         key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt', 'requirements-dev.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
@@ -60,7 +65,7 @@ jobs:
 
     - name: Create Google Client Config from secret (macOS/Linux)
       if: runner.os != 'Windows'
-      run: echo "${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}" > src/config/security/google_client_config.json
+      run: printf "%s" "${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}" > src/config/security/google_client_config.json
 
     - name: Create Google Client Config from secret (Windows)
       if: runner.os == 'Windows'
@@ -119,32 +124,71 @@ jobs:
           set -e
           DEB_DIR="prayer-player-deb"
           VERSION=$(python -c "from src.__version__ import __version__; print(__version__)")
+          
+          # Create package structure
           mkdir -p "${DEB_DIR}/DEBIAN"
           mkdir -p "${DEB_DIR}/opt/PrayerPlayer"
           mkdir -p "${DEB_DIR}/usr/local/bin"
           mkdir -p "${DEB_DIR}/usr/share/applications"
           mkdir -p "${DEB_DIR}/usr/share/icons/hicolor/256x256/apps"
+
+          # Create control file
           cat <<EOF > "${DEB_DIR}/DEBIAN/control"
           Package: prayer-player
           Version: ${VERSION}
           Architecture: amd64
           Maintainer: Omar <dev@omar.com>
           Description: Prayer times application that plays the Adhan.
+          Depends: libegl1, libpulse0, libxcb-cursor0, libasound2
           EOF
+
+          # Create post-installation script
+          cat <<EOF > "${DEB_DIR}/DEBIAN/postinst"
+          #!/bin/sh
+          set -e
+          echo "Updating icon cache..."
+          gtk-update-icon-cache -q /usr/share/icons/hicolor || true
+          echo "Updating desktop database..."
+          update-desktop-database -q || true
+          exit 0
+          EOF
+
+          # Create pre-removal script
+          cat <<EOF > "${DEB_DIR}/DEBIAN/prerm"
+          #!/bin/sh
+          set -e
+          if [ "\$1" = "remove" ] || [ "\$1" = "purge" ]; then
+              echo "Updating icon cache after removal..."
+              gtk-update-icon-cache -q /usr/share/icons/hicolor || true
+              echo "Updating desktop database after removal..."
+              update-desktop-database -q || true
+          fi
+          exit 0
+          EOF
+
+          # Set permissions for control scripts
+          chmod 755 "${DEB_DIR}/DEBIAN/postinst"
+          chmod 755 "${DEB_DIR}/DEBIAN/prerm"
+
+          # Create desktop entry
           cat <<EOF > "${DEB_DIR}/usr/share/applications/prayer-player.desktop"
           [Desktop Entry]
           Name=Prayer Player
-          Exec=/usr/local/bin/PrayerPlayer
+          Exec=/opt/PrayerPlayer/PrayerPlayer
           Icon=prayer-player
-          Type=Application;
+          Type=Application
           Categories=Utility;
           EOF
+
+          # Copy application files
           cp -r dist/PrayerPlayer/* "${DEB_DIR}/opt/PrayerPlayer/"
-          ln -s /opt/PrayerPlayer/PrayerPlayer "${DEB_DIR}/usr/local/bin/PrayerPlayer"
+          ln -s /opt/PrayerPlayer/PrayerPlayer "${DEB_DIR}/usr/local/bin/prayer-player"
           cp src/assets/mosque.png "${DEB_DIR}/usr/share/icons/hicolor/256x256/apps/prayer-player.png"
-          chmod -R 755 "${DEB_DIR}"
+
+          # Build the package
           dpkg-deb --build "${DEB_DIR}"
           mv "${DEB_DIR}.deb" "dist/prayer-player-${VERSION}-amd64.deb"
+          
           echo "--- Final .deb artifact ---"
           ls -l dist/
 
