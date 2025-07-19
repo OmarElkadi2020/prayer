@@ -190,13 +190,13 @@ jobs:
           Name=Prayer Player
           Exec=/opt/PrayerPlayer/PrayerPlayer
           Icon=prayer-player
-          Type=Application;
+          Type=Application
           Categories=Utility;
           EOF
 
           # Copy application files
           cp -r dist/PrayerPlayer/* "${DEB_DIR}/opt/PrayerPlayer/"
-          ln -s /opt/PrayerPlayer/PrayerPlayer "${DEB_DIR}/usr/local/bin/prayer-player"
+          ln -s /opt/PrayerPlayer/PrayerPlayer/PrayerPlayer "${DEB_DIR}/usr/local/bin/prayer-player"
           cp src/assets/mosque.png "${DEB_DIR}/usr/share/icons/hicolor/256x256/apps/prayer-player.png"
 
           # Build the package
