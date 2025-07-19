@@ -74,8 +74,9 @@ jobs:
     - name: Create Google Client Config from secret (macOS/Linux)
       if: runner.os != 'Windows'
       run: |
-        echo "DEBUG: GOOGLE_CLIENT_CONFIG_JSON secret length: $(echo -n "${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}" | wc -c)"
-        echo "${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}" | base64 -d > src/config/security/google_client_config.json
+        cat <<EOF > src/config/security/google_client_config.json
+${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}
+EOF
 
     - name: Create Google Client Config from secret (Windows)
       if: runner.os == 'Windows'
