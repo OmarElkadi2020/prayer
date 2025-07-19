@@ -47,22 +47,36 @@ def run_focus_steps(is_modal: bool = False) -> None:
 
 # -- audio playback ---
 
-from playsound import playsound
+import sys
 
 # -- audio playback ---
 
 def play(audio_path: str) -> None:
     """
-    Plays the given audio file using the 'playsound' library for cross-platform support.
+    Plays the given audio file using a suitable method for the current platform.
     This is a blocking call.
     """
-    LOG.info(f"📢 Attempting to play audio using 'playsound': {audio_path}")
     if not os.path.exists(audio_path):
         LOG.error(f"Audio file not found: {audio_path}")
         return
 
-    try:
-        playsound(audio_path)
-        LOG.info("Playback finished successfully via 'playsound'.")
-    except Exception as e:
-        LOG.error(f"An unexpected error occurred during 'playsound' execution: {e}")
+    if sys.platform.startswith('linux'):
+        LOG.info(f"📢 Attempting to play audio using 'aplay': {audio_path}")
+        try:
+            subprocess.run(['aplay', audio_path], check=True)
+            LOG.info("Playback finished successfully via 'aplay'.")
+        except subprocess.CalledProcessError as e:
+            LOG.error(f"aplay failed with error: {e}")
+        except FileNotFoundError:
+            LOG.error("aplay command not found. Please ensure alsa-utils is installed.")
+        except Exception as e:
+            LOG.error(f"An unexpected error occurred during aplay execution: {e}")
+    else:
+        # Fallback to playsound for other platforms (macOS, Windows)
+        from playsound import playsound
+        LOG.info(f"📢 Attempting to play audio using 'playsound': {audio_path}")
+        try:
+            playsound(audio_path)
+            LOG.info("Playback finished successfully via 'playsound'.")
+        except Exception as e:
+            LOG.error(f"An unexpected error occurred during playsound execution: {e}")

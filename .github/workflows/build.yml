@@ -42,7 +42,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y libegl1 libpulse0 libxcb-cursor0 libasound2-dev
+        sudo apt-get install -y libegl1 libpulse0 libxcb-cursor0 libasound2-dev alsa-utils
 
     - name: Get pip cache dir
       id: pip-cache
