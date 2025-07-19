@@ -61,8 +61,43 @@ jobs:
           pyinstaller --noconfirm PrayerPlayer.spec
         fi
 
-    - name: List dist directory
-      run: ls -R dist/
+    - name: Set up token for dry run (macOS)
+      if: inputs.os == 'macos-latest'
+      run: |
+        mkdir -p ~/Library/Application\ Support/PrayerPlayer
+        echo "${{ secrets.TOKEN }}" > ~/Library/Application\ Support/PrayerPlayer/token.json
+
+    - name: Set up token for dry run (Linux)
+      if: inputs.os == 'ubuntu-22.04'
+      run: |
+        mkdir -p ~/.local/share/PrayerPlayer
+        echo "${{ secrets.TOKEN }}" > ~/.local/share/PrayerPlayer/token.json
+
+    - name: Set up token for dry run (Windows)
+      if: inputs.os == 'windows-latest'
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory -Force -Path "$env:APPDATA\PrayerPlayer"
+        Set-Content -Path "$env:APPDATA\PrayerPlayer\token.json" -Value "${{ secrets.TOKEN }}"
+
+    - name: Make artifact executable
+      if: inputs.os != 'windows-latest'
+      run: chmod -R +x dist/
+
+    - name: Test application startup (dry run)
+      shell: bash
+      run: |
+        echo "Listing contents of dist directory:"
+        ls -R dist
+        echo "Running startup test for ${{ inputs.os }}"
+        # Adjust the executable path based on the OS
+        if [ "${{ inputs.os }}" == "ubuntu-22.04" ]; then
+          ./dist/PrayerPlayer/PrayerPlayer --dry-run --country US --city "New York"
+        elif [ "${{ inputs.os }}" == "macos-latest" ]; then
+          ./dist/PrayerPlayer.app/Contents/MacOS/PrayerPlayer --dry-run --country US --city "New York"
+        elif [ "${{ inputs.os }}" == "windows-latest" ]; then
+          ./dist/PrayerPlayer/PrayerPlayer.exe --dry-run --country US --city "New York"
+        fi
 
     - name: Upload application executable artifact
       uses: actions/upload-artifact@v4

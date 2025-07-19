@@ -20,17 +20,9 @@ jobs:
       GOOGLE_CLIENT_CONFIG_JSON: ${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}
       TOKEN: ${{ secrets.TOKEN }}
 
-  test:
-    needs: build
-    uses: ./.github/workflows/test-dry-run.yml
-    with:
-      os: windows-latest
-    secrets:
-      TOKEN: ${{ secrets.TOKEN }}
-
   package-exe:
     runs-on: windows-latest
-    needs: test
+    needs: build
     steps:
     - name: Check out code
       uses: actions/checkout@v3
