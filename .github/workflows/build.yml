@@ -31,9 +31,16 @@ jobs:
 
     steps:
     - name: Clean up previous build artifacts
+      if: runner.os == 'Linux' || runner.os == 'macOS'
       run: |
-        rm -rf build/ dist/ *.spec __pycache__
+        rm -rf build/ dist/ *.spec
         find . -type d -name "__pycache__" -exec rm -r {} +
+    - name: Clean up previous build artifacts (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        Remove-Item -Recurse -Force build/, dist/, *.spec -ErrorAction SilentlyContinue
+        Get-ChildItem -Path . -Recurse -Directory -ErrorAction SilentlyContinue | Where-Object {$_.Name -eq "__pycache__"} | Remove-Item -Recurse -Force
 
     - name: Check out code
       uses: actions/checkout@v3
@@ -132,7 +139,7 @@ jobs:
         echo "DEBUG: sys.platform in Python:"
         python -c "import sys; print(sys.platform)"
         if [ "${{ runner.os }}" == "Linux" ]; then
-          ./dist/PrayerPlayer/PrayerPlayer --dry-run --country US --city "New York"
+          ./dist/PrayerPlayer --dry-run --country US --city "New York"
         elif [ "${{ runner.os }}" == "macOS" ]; then
           ./dist/PrayerPlayer.app/Contents/MacOS/PrayerPlayer --dry-run --country US --city "New York"
         elif [ "${{ runner.os }}" == "Windows" ]; then
