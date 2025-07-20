@@ -69,6 +69,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libegl1 libpulse0 libxcb-cursor0 libasound2-dev alsa-utils libqt6gui6 libqt6widgets6
 
+      - name: Debug Google Client Config
+        run: echo "GOOGLE_CLIENT_CONFIG_JSON content: ${{ env.GOOGLE_CLIENT_CONFIG_JSON }}"
+
       - name: Build application
         env:
           GOOGLE_CLIENT_CONFIG_JSON: ${{ secrets.GOOGLE_CLIENT_CONFIG }}
