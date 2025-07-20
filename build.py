@@ -55,33 +55,28 @@ def build_executable():
     pyinstaller_command = [
         sys.executable, "-m", "PyInstaller",
         "--noconfirm",
-        "--name", APP_NAME,
-        "--icon", ICON_PATH,
-        "--add-data", "src/assets:assets",
-        "--add-data", "src/config:config",
-        "--hidden-import", "src.auth",
-        "--hidden-import", "src.calendar_api",
-        "--hidden-import", "src.config",
-        "--hidden-import", "src.platform",
-        "--hidden-import", "src.gui",
-        "--hidden-import", "src.state",
-        "--hidden-import", "src.tray_icon",
     ]
 
-    if sys.platform == "win32":
-        pyinstaller_command.extend(["--windowed"])
-    else:
-        pyinstaller_command.extend(["--onefile", "--windowed"])
-
-
     if sys.platform == "darwin":
-        pyinstaller_command.extend([
-            "--exclude-module", "PySide6.QtWebEngineCore",
-            "--exclude-module", "PySide6.QtWebEngineWidgets",
-            # ... add all other excludes from the mac spec file
-        ])
         pyinstaller_command.append("PrayerPlayer-mac.spec")
     else:
+        pyinstaller_command.extend([
+            "--name", APP_NAME,
+            "--icon", ICON_PATH,
+            "--add-data", "src/assets:assets",
+            "--add-data", "src/config:config",
+            "--hidden-import", "src.auth",
+            "--hidden-import", "src.calendar_api",
+            "--hidden-import", "src.config",
+            "--hidden-import", "src.platform",
+            "--hidden-import", "src.gui",
+            "--hidden-import", "src.state",
+            "--hidden-import", "src.tray_icon",
+        ])
+        if sys.platform == "win32":
+            pyinstaller_command.extend(["--windowed"])
+        else: # Linux
+            pyinstaller_command.extend(["--onefile", "--windowed"])
         pyinstaller_command.append(ENTRY_POINT)
 
 
