@@ -34,18 +34,18 @@ def install_dependencies():
     subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements-dev.txt"], check=True)
     print("Dependencies installed.")
 
-def create_google_config():
-    """Create the Google client config file from an environment variable."""
+def create_google_config(google_client_config_json_content=None):
+    """Create the Google client config file from provided content or environment variable."""
     print("--- Creating Google Client Config ---")
-    google_config_json = os.getenv("GOOGLE_CLIENT_CONFIG_JSON")
-    if google_config_json:
+    config_content = google_client_config_json_content or os.getenv("GOOGLE_CLIENT_CONFIG_JSON")
+    if config_content:
         config_path = "src/config/security"
         os.makedirs(config_path, exist_ok=True)
         with open(os.path.join(config_path, "google_client_config.json"), "w") as f:
-            f.write(google_config_json)
+            f.write(config_content)
         print("Google client config file created.")
     else:
-        raise FileNotFoundError("GOOGLE_CLIENT_CONFIG_JSON environment variable not set. Cannot create google_client_config.json.")
+        print("No Google client config content provided. Skipping creation.")
 
 def build_executable():
     """Build the application executable with PyInstaller."""
@@ -185,12 +185,14 @@ def main():
     parser.add_argument("command", nargs="?", choices=["clean", "deps", "build", "package", "all"], help="The command to execute.")
     parser.add_argument("--release", action="store_true", help="Perform a full release build (all steps).")
 
+    parser.add_argument("--google-client-config", help="Content of google_client_config.json for direct injection.")
+
     args = parser.parse_args()
 
     if args.release:
         clean()
         install_dependencies()
-        create_google_config()
+        create_google_config(args.google_client_config)
         build_executable()
         package_application()
     elif args.command:
@@ -199,14 +201,14 @@ def main():
         elif args.command == "deps":
             install_dependencies()
         elif args.command == "build":
-            create_google_config()
+            create_google_config(args.google_client_config)
             build_executable()
         elif args.command == "package":
             package_application()
         elif args.command == "all":
             clean()
             install_dependencies()
-            create_google_config()
+            create_google_config(args.google_client_config)
             build_executable()
             package_application()
     else:
