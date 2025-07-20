@@ -30,6 +30,11 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+    - name: Clean up previous build artifacts
+      run: |
+        rm -rf build/ dist/ *.spec __pycache__
+        find . -type d -name "__pycache__" -exec rm -r {} +
+
     - name: Check out code
       uses: actions/checkout@v3
 
@@ -90,6 +95,8 @@ jobs:
       run: |
         if [ "${{ runner.os }}" == "macOS" ]; then
           pyinstaller --noconfirm PrayerPlayer-mac.spec
+        elif [ "${{ runner.os }}" == "Linux" ]; then
+          pyinstaller --noconfirm PrayerPlayer.spec
         else
           pyinstaller --noconfirm PrayerPlayer.spec
         fi
@@ -140,9 +147,11 @@ jobs:
           DEB_DIR="prayer-player-deb"
           VERSION=$(python -c "from src.__version__ import __version__; print(__version__)")
           
+          # Clean up previous build directory if it exists
+          rm -rf "${DEB_DIR}"
+
           # Create package structure
           mkdir -p "${DEB_DIR}/DEBIAN"
-          mkdir -p "${DEB_DIR}/opt/PrayerPlayer"
           mkdir -p "${DEB_DIR}/usr/local/bin"
           mkdir -p "${DEB_DIR}/usr/share/applications"
           mkdir -p "${DEB_DIR}/usr/share/icons/hicolor/256x256/apps"
