@@ -45,7 +45,7 @@ class TestActions(unittest.TestCase):
         non_existent_file = "non_existent_file.wav"
         with patch('src.actions.LOG') as mock_log:
             play(non_existent_file)
-            mock_log.error.assert_called_with(f"Audio file not found: {non_existent_file}")
+            mock_log.error.assert_called_with(f"Audio file not found: {non_existent_file} (effective: {non_existent_file})")
 
 if __name__ == '__main__':
     unittest.main()

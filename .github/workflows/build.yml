@@ -51,7 +51,7 @@ jobs:
           - os: windows-latest
             python-version: '3.10'
             asset_name: prayer-player-windows.exe
-            asset_path: deployment/windows/Output/*.exe
+            asset_path: dist/PrayerPlayer/*.exe
 
     runs-on: ${{ matrix.os }}
 
@@ -92,7 +92,7 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           # Run the application directly with dry run arguments
-          & .\dist\PrayerPlayer.exe --dry-run --country "Germany" --city "Deggendorf" || true
+          & .\dist\PrayerPlayer\PrayerPlayer.exe --dry-run --country "Germany" --city "Deggendorf" || true
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4

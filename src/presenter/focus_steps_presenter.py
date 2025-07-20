@@ -2,6 +2,8 @@
 
 import re
 import random
+import os
+import sys
 from importlib import resources
 
 def load_steps_from_file(file_path):
@@ -40,7 +42,12 @@ def load_steps_from_file(file_path):
     
     return steps
 
-STEPS_FILE_PATH = str(resources.files('config').joinpath('steps_content.txt'))
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    # Running in a PyInstaller bundle
+    STEPS_FILE_PATH = os.path.join(sys._MEIPASS, 'config', 'steps_content.txt')
+else:
+    # Running in a normal Python environment
+    STEPS_FILE_PATH = str(resources.files('src.config').joinpath('steps_content.txt'))
 STEPS = load_steps_from_file(STEPS_FILE_PATH)
 
 class FocusStepsPresenter:

@@ -60,8 +60,16 @@ class TestPrayerScheduler(unittest.TestCase):
         self.assertEqual(len(self.scheduler.scheduler.get_jobs()), 3)
 
     def test_play_adhan_and_duaa(self):
+        from unittest.mock import call
+        from src.config.security import get_asset_path
+
         self.scheduler.play_adhan_and_duaa()
-        self.action_executor.play_audio.assert_called_once_with(self.audio_path)
+
+        expected_calls = [
+            call(str(get_asset_path('adhan.wav'))),
+            call(str(get_asset_path('duaa_after_adhan.wav')))
+        ]
+        self.action_executor.play_audio.assert_has_calls(expected_calls)
         self.assertEqual(self.state_manager.state, AppState.IDLE)
 
     def test_schedule_single_prayer_job(self):
