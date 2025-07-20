@@ -74,6 +74,27 @@ jobs:
           GOOGLE_CLIENT_CONFIG_JSON: ${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}
         run: python build.py --release
 
+      - name: Dry run built application (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          # Install xvfb for headless GUI testing
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          # Run the application in a virtual display with dry run arguments
+          xvfb-run --auto-display dist/PrayerPlayer --dry-run --country "Germany" --city "Deggendorf" || true
+
+      - name: Dry run built application (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          # Run the application directly with dry run arguments
+          dist/PrayerPlayer.app/Contents/MacOS/PrayerPlayer --dry-run --country "Germany" --city "Deggendorf" || true
+
+      - name: Dry run built application (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          # Run the application directly with dry run arguments
+          .\dist\PrayerPlayer.exe --dry-run --country "Germany" --city "Deggendorf" || true
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
