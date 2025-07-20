@@ -71,7 +71,7 @@ jobs:
 
       - name: Build application
         env:
-          GOOGLE_CLIENT_CONFIG_JSON: ${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}
+          GOOGLE_CLIENT_CONFIG_JSON: ${{ secrets.GOOGLE_CLIENT_CONFIG }}
         run: python build.py --release
 
       - name: Dry run built application (Linux)
