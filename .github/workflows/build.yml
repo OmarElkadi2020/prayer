@@ -143,7 +143,7 @@ jobs:
         elif [ "${{ runner.os }}" == "macOS" ]; then
           ./dist/PrayerPlayer.app/Contents/MacOS/PrayerPlayer --dry-run --country US --city "New York"
         elif [ "${{ runner.os }}" == "Windows" ]; then
-          ./dist/PrayerPlayer/PrayerPlayer.exe --dry-run --country US --city "New York"
+          ./dist/PrayerPlayer.exe --dry-run --country US --city "New York"
         fi
 
     - name: Build and package Ubuntu .deb file
