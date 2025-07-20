@@ -45,7 +45,7 @@ def create_google_config():
             f.write(google_config_json)
         print("Google client config file created.")
     else:
-        print("GOOGLE_CLIENT_CONFIG_JSON environment variable not set. Skipping.")
+        raise FileNotFoundError("GOOGLE_CLIENT_CONFIG_JSON environment variable not set. Cannot create google_client_config.json.")
 
 def build_executable():
     """Build the application executable with PyInstaller."""
