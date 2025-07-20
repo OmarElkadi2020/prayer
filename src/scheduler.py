@@ -98,8 +98,15 @@ class PrayerScheduler:
         self.state_manager.state = AppState.PRAYER_TIME
         
         try:
-            self.action_executor.play_audio(self.audio_path)
-            LOG.info("Audio finished.")
+            from src.config.security import get_asset_path
+            adhan_path = str(get_asset_path('adhan.wav'))
+            duaa_path = str(get_asset_path('duaa_after_adhan.wav'))
+
+            LOG.info(f"Playing Adhan from {adhan_path}")
+            self.action_executor.play_audio(adhan_path)
+            LOG.info("Adhan finished. Playing Duaa.")
+            self.action_executor.play_audio(duaa_path)
+            LOG.info("Duaa finished.")
 
         except Exception as e:
             LOG.error(f"Error during audio playback or focus mode trigger: {e}")
