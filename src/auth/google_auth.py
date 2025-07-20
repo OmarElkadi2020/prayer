@@ -1,5 +1,6 @@
 import os
 import json
+import sys
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -41,9 +42,18 @@ def get_google_credentials(reauthenticate=False):
         else:
             # Check if the credentials file exists in the user's config directory or the project root.
             try:
-                with resources.path('config.security', 'google_client_config.json') as credentials_path:
-                    flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
-                    creds = flow.run_local_server(port=0)
+                # Determine the base path for resources
+                if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+                    # Running in a PyInstaller bundle
+                    base_path = sys._MEIPASS
+                else:
+                    # Running in a normal Python environment
+                    base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+                credentials_path = os.path.join(base_path, 'config', 'security', 'google_client_config.json')
+
+                flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
+                creds = flow.run_local_server(port=0)
             except FileNotFoundError:
                 message = (
                     "Google API credentials file not found within the application bundle.\n\n"
