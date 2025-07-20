@@ -89,6 +89,9 @@ jobs:
         cat <<EOF > src/config/security/google_client_config.json
         ${{ secrets.GOOGLE_CLIENT_CONFIG_JSON }}
         EOF
+        # Remove any leading empty lines or whitespace
+        sed -i '/./,$!d' src/config/security/google_client_config.json
+        sed -i 's/^[[:space:]]*//' src/config/security/google_client_config.json
 
     - name: Create Google Client Config from secret (Windows)
       if: runner.os == 'Windows'
