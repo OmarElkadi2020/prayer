@@ -42,29 +42,29 @@ def get_google_credentials(reauthenticate=False):
         else:
             # Check if the credentials file exists in the user's config directory or the project root.
             try:
+                config_path = None
                 # Define system-wide config path for installed applications
                 SYSTEM_CONFIG_PATH = os.path.join('/usr', 'share', APP_NAME.lower(), 'config', 'security', 'google_client_config.json')
 
                 if os.path.exists(SYSTEM_CONFIG_PATH):
-                    credentials_path = SYSTEM_CONFIG_PATH
-                config_path = None
-    # 1. Check system-wide path (for installed applications)
-    system_wide_path = '/usr/share/prayer-player/config/security/google_client_config.json'
-    if os.path.exists(system_wide_path):
-        config_path = system_wide_path
-    # 2. Check PyInstaller temporary extraction path (for bundled applications)
-    elif sys.frozen and hasattr(sys, '_MEIPASS'):
-        pyinstaller_path = os.path.join(sys._MEIPASS, 'config', 'security', 'google_client_config.json')
-        if os.path.exists(pyinstaller_path):
-            config_path = pyinstaller_path
-    # 3. Fallback to relative path (for local development)
-    else:
-        dev_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'security', 'google_client_config.json')
-        if os.path.exists(dev_path):
-            config_path = dev_path
+                    config_path = SYSTEM_CONFIG_PATH
+                # 2. Check PyInstaller temporary extraction path (for bundled applications)
+                elif sys.frozen and hasattr(sys, '_MEIPASS'):
+                    pyinstaller_path = os.path.join(sys._MEIPASS, 'config', 'security', 'google_client_config.json')
+                    if os.path.exists(pyinstaller_path):
+                        config_path = pyinstaller_path
+                # 3. Fallback to relative path (for local development)
+                else:
+                    dev_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'security', 'google_client_config.json')
+                    if os.path.exists(dev_path):
+                        config_path = dev_path
 
-                flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
-                creds = flow.run_local_server(port=0)
+                if config_path: # Only proceed if a config_path was found
+                    flow = InstalledAppFlow.from_client_secrets_file(config_path, SCOPES)
+                    creds = flow.run_local_server(port=0)
+                else:
+                    raise FileNotFoundError("Google API client configuration file not found.")
+
             except FileNotFoundError:
                 message = (
                     "Google API credentials file not found within the application bundle.\n\n"
