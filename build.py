@@ -147,7 +147,11 @@ Categories=Utility;
     # Include Google credentials in system-wide location for the package
     system_config_dir = os.path.join(DEB_STAGING_DIR, "usr", "share", PACKAGE_NAME, "config", "security")
     os.makedirs(system_config_dir, exist_ok=True)
-    shutil.copy(os.path.join("src", "config", "security", "google_client_config.json"), system_config_dir)
+    dev_credentials = os.path.join("src", "config", "security", "google_client_config.json")
+    if os.path.exists(dev_credentials):
+        shutil.copy(dev_credentials, system_config_dir)
+    else:
+        print("Google client config not found; skipping inclusion in package.")
 
     # Build the package
     subprocess.run(["dpkg-deb", "--build", DEB_STAGING_DIR], check=True)
