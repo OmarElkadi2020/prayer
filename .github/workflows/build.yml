@@ -92,6 +92,7 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           # Run the application directly with dry run arguments
+<<<<<<< HEAD
           & .\dist\PrayerPlayer\PrayerPlayer.exe --dry-run --country "Germany" --city "Deggendorf" || true
 
       - name: Upload Artifact

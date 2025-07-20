@@ -42,11 +42,8 @@ def load_steps_from_file(file_path):
     
     return steps
 
-<<<<<<< HEAD
-=======
 import sys
 
->>>>>>> 28c8b14 (Fix: Adhan playback and focus steps display)
 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
     # Running in a PyInstaller bundle
     STEPS_FILE_PATH = os.path.join(sys._MEIPASS, 'config', 'steps_content.txt')
