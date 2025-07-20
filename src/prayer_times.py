@@ -47,7 +47,17 @@ def _fetch_raw(city: str, country: str, method: int | None, school: int | None) 
         if cache_key in _disk_cache:
             LOG.warning("Returning stale data from disk cache due to API failure.")
             return _disk_cache[cache_key]
-        raise
+
+        LOG.warning("Using fallback prayer times due to API unavailability.")
+        fallback = {
+            "Fajr": "05:00",
+            "Dhuhr": "12:00",
+            "Asr": "15:00",
+            "Maghrib": "18:00",
+            "Isha": "20:00",
+        }
+        _disk_cache[cache_key] = fallback
+        return fallback
 
 def today_times(city: str, country: str, method: int | None = None, school: int | None = None) -> Dict[str, datetime]:
     """

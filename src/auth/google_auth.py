@@ -21,7 +21,8 @@ APP_AUTHOR = "Omar"
 # Path for user-specific, writable config files
 USER_CONFIG_DIR = user_data_dir(APP_NAME, APP_AUTHOR)
 TOKEN_FILE = os.path.join(USER_CONFIG_DIR, 'token.json')
-# CREDENTIALS_FILE is now accessed via importlib.resources
+# System-wide path where credentials may be installed
+SYSTEM_CREDENTIALS_PATH = '/usr/share/prayer-player/config/security/google_client_config.json'
 
 def get_google_credentials(reauthenticate=False):
     creds = None
@@ -40,17 +41,14 @@ def get_google_credentials(reauthenticate=False):
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            # Check if the credentials file exists in the user's config directory or the project root.
             try:
-                # Determine the base path for resources
-                if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-                    # Running in a PyInstaller bundle
-                    base_path = sys._MEIPASS
+                if os.path.exists(SYSTEM_CREDENTIALS_PATH):
+                    credentials_path = SYSTEM_CREDENTIALS_PATH
+                elif getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+                    credentials_path = os.path.join(sys._MEIPASS, 'config', 'security', 'google_client_config.json')
                 else:
-                    # Running in a normal Python environment
                     base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-
-                credentials_path = os.path.join(base_path, 'config', 'security', 'google_client_config.json')
+                    credentials_path = os.path.join(base_path, 'src', 'config', 'security', 'google_client_config.json')
 
                 flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
                 creds = flow.run_local_server(port=0)

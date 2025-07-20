@@ -93,7 +93,7 @@ If you need to set up calendar integration without using the GUI (e.g., for head
         2.  Create a new project.
         3.  Enable the "Google Calendar API".
         4.  Create credentials for a "Desktop app".
-        5.  Download the `google_client_config.json` file and place it in the root of the project directory.
+        5.  Download the `google_client_config.json` file and place it under `src/config/security/`.
 3.  **Run the setup command:**
     ```bash
     prayer-player --setup-calendar

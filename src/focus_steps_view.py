@@ -13,19 +13,26 @@
 
 import sys
 from importlib import resources
-from PySide6.QtWidgets import (
-    QApplication,
-    QWidget,
-    QLabel,
-    QPushButton,
-    QVBoxLayout,
-    QHBoxLayout,
-    QScrollArea,
-    QSizePolicy,
-)
-from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QFont, QIcon, QGuiApplication
-from PySide6.QtMultimedia import QSoundEffect
+try:
+    from PySide6.QtWidgets import (
+        QApplication,
+        QWidget,
+        QLabel,
+        QPushButton,
+        QVBoxLayout,
+        QHBoxLayout,
+        QScrollArea,
+        QSizePolicy,
+    )
+    from PySide6.QtCore import Qt, QUrl
+    from PySide6.QtGui import QFont, QIcon, QGuiApplication
+    from PySide6.QtMultimedia import QSoundEffect
+except Exception:  # pragma: no cover - used for test environments without PySide6
+    QApplication = QWidget = QLabel = QPushButton = QVBoxLayout = QHBoxLayout = QScrollArea = QSizePolicy = object
+    Qt = QUrl = QFont = QIcon = QGuiApplication = object
+    class QSoundEffect:  # minimal stub
+        def __init__(self):
+            pass
 from src.presenter.focus_steps_presenter import FocusStepsPresenter
 
 # --- Configuration Constants ---
