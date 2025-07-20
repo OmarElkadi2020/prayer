@@ -50,7 +50,6 @@ def create_google_config():
 def build_executable():
     """Build the application executable with PyInstaller."""
     print(f"--- Building application executable for {sys.platform} ---")
-    create_google_config()
 
     pyinstaller_command = [
         sys.executable, "-m", "PyInstaller",
@@ -145,6 +144,11 @@ Categories=Utility;
     shutil.copy(os.path.join("dist", APP_NAME), install_dir)
     shutil.copy(ICON_PATH, os.path.join(icon_dir, f"{PACKAGE_NAME}.png"))
 
+    # Copy Google client config to system-wide config directory
+    system_config_dir = os.path.join(DEB_STAGING_DIR, "usr", "share", PACKAGE_NAME, "config", "security")
+    os.makedirs(system_config_dir, exist_ok=True)
+    shutil.copy(os.path.join("src", "config", "security", "google_client_config.json"), system_config_dir)
+
     # Build the package
     subprocess.run(["dpkg-deb", "--build", DEB_STAGING_DIR], check=True)
     os.rename(f"{DEB_STAGING_DIR}.deb", os.path.join("dist", f"{PACKAGE_NAME}_{VERSION}_{arch}.deb"))
@@ -186,6 +190,7 @@ def main():
     if args.release:
         clean()
         install_dependencies()
+        create_google_config()
         build_executable()
         package_application()
     elif args.command:
@@ -194,12 +199,14 @@ def main():
         elif args.command == "deps":
             install_dependencies()
         elif args.command == "build":
+            create_google_config()
             build_executable()
         elif args.command == "package":
             package_application()
         elif args.command == "all":
             clean()
             install_dependencies()
+            create_google_config()
             build_executable()
             package_application()
     else:

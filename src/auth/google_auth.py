@@ -42,15 +42,26 @@ def get_google_credentials(reauthenticate=False):
         else:
             # Check if the credentials file exists in the user's config directory or the project root.
             try:
-                # Determine the base path for resources
-                if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-                    # Running in a PyInstaller bundle
-                    base_path = sys._MEIPASS
-                else:
-                    # Running in a normal Python environment
-                    base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+                # Define system-wide config path for installed applications
+                SYSTEM_CONFIG_PATH = os.path.join('/usr', 'share', APP_NAME.lower(), 'config', 'security', 'google_client_config.json')
 
-                credentials_path = os.path.join(base_path, 'config', 'security', 'google_client_config.json')
+                if os.path.exists(SYSTEM_CONFIG_PATH):
+                    credentials_path = SYSTEM_CONFIG_PATH
+                config_path = None
+    # 1. Check system-wide path (for installed applications)
+    system_wide_path = '/usr/share/prayer-player/config/security/google_client_config.json'
+    if os.path.exists(system_wide_path):
+        config_path = system_wide_path
+    # 2. Check PyInstaller temporary extraction path (for bundled applications)
+    elif sys.frozen and hasattr(sys, '_MEIPASS'):
+        pyinstaller_path = os.path.join(sys._MEIPASS, 'config', 'security', 'google_client_config.json')
+        if os.path.exists(pyinstaller_path):
+            config_path = pyinstaller_path
+    # 3. Fallback to relative path (for local development)
+    else:
+        dev_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'security', 'google_client_config.json')
+        if os.path.exists(dev_path):
+            config_path = dev_path
 
                 flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
                 creds = flow.run_local_server(port=0)

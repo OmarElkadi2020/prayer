@@ -81,7 +81,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xvfb
           # Run the application in a virtual display with dry run arguments
-          xvfb-run --auto-display dist/PrayerPlayer --dry-run --country "Germany" --city "Deggendorf" || true
+          dist/PrayerPlayer --dry-run --country "Germany" --city "Deggendorf" || true
 
       - name: Dry run built application (macOS)
         if: runner.os == 'macOS'
