@@ -16,3 +16,4 @@ src/config/security/google_client_config.json
 __pycache__
 Installers/prayer-player-ubuntu.zip
 Installers/prayer-player-windows.zip
+prayer-player-deb-staging/
