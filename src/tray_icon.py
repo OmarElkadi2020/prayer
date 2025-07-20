@@ -32,7 +32,7 @@ def get_asset_path(package, resource):
         LOG.warning(f"Asset '{resource}' not found in package '{package}'.") # Changed to LOG.warning
         return ""
 
-BASE_ICON_PATH = get_asset_path('src.assets', 'mosque.png')
+BASE_ICON_PATH = get_asset_path('assets', 'mosque.png')
 if not BASE_ICON_PATH:
     LOG.error("Could not find 'mosque.png'. The application cannot start.") # Changed to LOG.error
     sys.exit(1)
