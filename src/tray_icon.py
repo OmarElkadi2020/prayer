@@ -2,21 +2,18 @@ import sys
 import threading
 import time
 from importlib import resources
-import logging # Added for logging
 
 from PySide6.QtWidgets import QApplication, QMessageBox, QSystemTrayIcon, QMenu
 from PySide6.QtGui import QIcon, QAction, QPixmap
-from PySide6.QtCore import QTimer, QObject, Signal
-from datetime import datetime, timedelta
+from PySide6.QtCore import QObject, Signal, Qt
 
 from PIL import Image, ImageDraw
 from PIL.ImageQt import ImageQt
 
-from src.config.security import load_config, LOG # Import LOG
-from src import gui, focus_steps_view, scheduler
+from src.config.security import load_config, LOG
+from src import gui, scheduler
 from src.state import state_manager, AppState
-from src.calendar_api.google_calendar import GoogleCalendarService # Added
-from src.auth.google_auth import get_google_credentials, CredentialsNotFoundError # Added
+from src.qt_utils import run_in_qt_thread
 
 # Globals
 settings_window = None
@@ -29,12 +26,12 @@ def get_asset_path(package, resource):
         with resources.path(package, resource) as p:
             return str(p)
     except (FileNotFoundError, ModuleNotFoundError):
-        LOG.warning(f"Asset '{resource}' not found in package '{package}'.") # Changed to LOG.warning
+        LOG.warning(f"Asset '{resource}' not found in package '{package}'.")
         return ""
 
 BASE_ICON_PATH = get_asset_path('assets', 'mosque.png')
 if not BASE_ICON_PATH:
-    LOG.error("Could not find 'mosque.png'. The application cannot start.") # Changed to LOG.error
+    LOG.error("Could not find 'mosque.png'. The application cannot start.")
     sys.exit(1)
 
 def create_q_icon(base_path, state: AppState):
@@ -73,8 +70,6 @@ def create_q_icon(base_path, state: AppState):
 # ICONS will be initialized inside setup_tray_icon after QApplication is created.
 # ICONS = {}
 
-# --- GUI Thread Safety ---
-# Use a QObject with a signal to safely update the GUI from a background thread.
 class IconUpdater(QObject):
     # Signal will emit the application's state, not a GUI object.
     update_state_signal = Signal(AppState)
@@ -88,8 +83,6 @@ class IconUpdater(QObject):
             current_state = state_manager.state
             self.update_state_signal.emit(current_state)
             time.sleep(ICON_UPDATE_INTERVAL)
-
-from src.qt_utils import run_in_qt_thread
 
 # --- Menu Actions ---
 @run_in_qt_thread
@@ -125,7 +118,7 @@ def check_for_updates(checked=False):
 @run_in_qt_thread
 def quit_app(checked=False):
     """Safely quits the QApplication."""
-    LOG.info("Quit action triggered from tray icon menu.") # Changed to LOG.info
+    LOG.info("Quit action triggered from tray icon menu.")
     QApplication.instance().quit()
 
 
@@ -143,40 +136,6 @@ def setup_tray_icon(argv: list[str] | None = None, scheduler_instance: scheduler
         if scheduler_instance:
             scheduler_instance.run()
         return 0 # Return 0 for success in dry run mode, as there's no GUI event loop to run
-
-    # Move create_q_icon and ICONS initialization inside here
-    def create_q_icon(base_path, state: AppState):
-        """Creates a dynamic QIcon by adding a colored dot to the base image."""
-        try:
-            pil_image = Image.open(base_path).convert("RGBA")
-            if state != AppState.IDLE:
-                draw = ImageDraw.Draw(pil_image)
-                width, height = pil_image.size
-                dot_radius = width // 6
-                dot_pos = (width - dot_radius * 2, height - dot_radius * 2)
-                
-                color = {
-                    AppState.SYNCING: "blue",
-                    AppState.PRAYER_TIME: "green",
-                    AppState.ERROR: "red",
-                }.get(state, "transparent")
-
-                draw.ellipse(
-                    (dot_pos[0], dot_pos[1], dot_pos[0] + dot_radius*2, dot_pos[1] + dot_radius*2),
-                    fill=color,
-                    outline="white"
-                )
-            
-            # Convert PIL image to QPixmap for use in QIcon
-            qimage = ImageQt(pil_image)
-            pixmap = QPixmap.fromImage(qimage)
-            return QIcon(pixmap)
-            
-        except FileNotFoundError:
-            # Return a placeholder QIcon if the base icon is missing
-            pixmap = QPixmap(64, 64)
-            pixmap.fill(Qt.transparent)
-            return QIcon(pixmap)
 
     # Initialize icons after QApplication is created.
     ICONS = {state: create_q_icon(BASE_ICON_PATH, state) for state in AppState}
@@ -223,7 +182,7 @@ def setup_tray_icon(argv: list[str] | None = None, scheduler_instance: scheduler
     # On first run, if config is missing, show settings
     current_config = load_config()
     if not current_config.city or not current_config.country:
-        LOG.info("Configuration not found, showing settings window.") # Changed to LOG.info
+        LOG.info("Configuration not found, showing settings window.")
         show_settings()
 
     return app.exec()

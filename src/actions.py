@@ -3,6 +3,7 @@
 # ---------------------------------------------------------------------------
 import os
 import subprocess
+import sys
 
 from src.config.security import LOG
 from src.qt_utils import run_in_qt_thread
@@ -45,9 +46,8 @@ def run_focus_steps(is_modal: bool = False) -> None:
     LOG.info("Focus steps window function called.")
 
 
-# -- audio playback ---
 
-import sys
+# -- audio playback ---
 
 # -- audio playback ---
 

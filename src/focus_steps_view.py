@@ -26,16 +26,13 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QFont, QIcon, QGuiApplication
 from PySide6.QtMultimedia import QSoundEffect
+from src.presenter.focus_steps_presenter import FocusStepsPresenter
 
 # --- Configuration Constants ---
 # Using constants for better maintainability and clarity.
 APP_TITLE = "تهيئة الخشوع"
 WINDOW_WIDTH = 400
 FONT_FAMILY = "Noto Sans Arabic"
-
-# ==================================================================
-# ❶ Asset and Content Loading
-# ==================================================================
 
 def get_asset_path(package, resource):
     """
@@ -48,9 +45,6 @@ def get_asset_path(package, resource):
     except (FileNotFoundError, ModuleNotFoundError):
         print(f"Warning: Asset '{resource}' not found in package '{package}'.")
         return ""
-
-
-from src.presenter.focus_steps_presenter import FocusStepsPresenter
 
 # --- Constants ---
 SOUND_PATH = get_asset_path('assets', 'complete_sound.wav')

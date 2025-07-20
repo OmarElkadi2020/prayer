@@ -3,13 +3,17 @@
 # ---------------------------------------------------------------------------
 
 from __future__ import annotations
-import argparse, logging, os, sys, json
+import argparse
+import logging
+import os
+import sys
+import json
 import argcomplete
 from datetime import timedelta
 from zoneinfo import ZoneInfo
 from importlib import resources
-from pydantic import BaseModel, Field
-from typing import List, Optional
+from appdirs import user_config_dir
+from src.config.schema import Config
 
 def get_asset_path(filename):
     """
@@ -20,8 +24,6 @@ def get_asset_path(filename):
 
 # --- Default Paths ---
 DEFAULT_ADHAN_PATH = get_asset_path('adhan.wav')
-
-from appdirs import user_config_dir
 
 def adhan_path():
     with resources.path('assets', 'adhan.wav') as p:
@@ -42,9 +44,6 @@ APP_AUTHOR = "Omar"
 CONFIG_DIR = user_config_dir(APP_NAME, APP_AUTHOR)
 print(f"CONFIG_DIR: {CONFIG_DIR}")
 CONFIG_FILE_PATH = os.path.join(CONFIG_DIR, 'config.json')
-
-from src.config.schema import Config
-
 
 def load_config() -> Config:
     """
