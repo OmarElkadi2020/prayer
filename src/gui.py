@@ -70,7 +70,20 @@ class Worker(QObject):
                 self.status_updated.emit("Google authentication successful!", "green")
         except google_auth.CredentialsNotFoundError as e:
             self.status_updated.emit(f"Google authentication failed: {e}", "red")
-            self.error.emit(str(e))
+            # Prompt user to authenticate if token.json is missing
+            reply = QMessageBox.question(
+                self,
+                "Calendar Integration",
+                "Google Calendar integration is not set up. This feature allows the app to automatically "
+                "block out prayer times in your Google Calendar, helping you reserve that time and "
+                "preventing meeting conflicts.\n\nWould you like to set it up now?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if reply == QMessageBox.Yes:
+                self.authenticate_google_calendar(reauthenticate=True)
+            else:
+                self.error.emit(str(e))
         except Exception as e:
             self.status_updated.emit(f"Google authentication failed: {e}", "red")
             self.error.emit(f"Failed to authenticate Google Calendar: {e}")
