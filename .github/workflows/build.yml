@@ -35,6 +35,7 @@ jobs:
 
   build-and-package:
     needs: test-and-lint
+    environment: dry_run
     strategy:
       fail-fast: false
       matrix:
