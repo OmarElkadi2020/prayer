@@ -1,8 +1,12 @@
 import unittest
 import time
+import os
 from datetime import datetime
 
 from src.prayer_times import today_times, _fetch_raw
+
+# Skip this test by default when network access is not enabled
+RUN_NET_TESTS = os.environ.get("RUN_NET_TESTS") == "1"
 
 class TestPrayerTimesIntegration(unittest.TestCase):
 
@@ -12,6 +16,7 @@ class TestPrayerTimesIntegration(unittest.TestCase):
         from src import prayer_times
         prayer_times._disk_cache.clear()
 
+    @unittest.skipUnless(RUN_NET_TESTS, "Network access required for this test")
     def test_today_times_with_real_api_call(self):
         """
         Tests the today_times function with a real API call to ensure it

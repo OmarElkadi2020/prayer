@@ -25,6 +25,12 @@ class TestPrayerScheduler(unittest.TestCase):
             action_executor=self.action_executor
         )
 
+    def tearDown(self):
+        try:
+            self.scheduler.scheduler.shutdown(wait=False)
+        except Exception:
+            pass
+
     def test_initialization(self):
         self.assertIsNotNone(self.scheduler.scheduler)
         self.assertEqual(self.scheduler.audio_path, self.audio_path)

@@ -1,5 +1,4 @@
 
-from PySide6.QtCore import QTimer
 import logging
 
 LOG = logging.getLogger(__name__)
@@ -19,6 +18,7 @@ def run_in_qt_thread(target_func):
             my_label.setText("Updated from another thread!")
     """
     def wrapper(*args, **kwargs):
+        from PySide6.QtCore import QTimer
         LOG.debug(f"Scheduling {target_func.__name__} on Qt thread.")
         QTimer.singleShot(0, lambda: target_func(*args, **kwargs))
     return wrapper
