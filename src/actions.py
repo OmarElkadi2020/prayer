@@ -4,6 +4,8 @@
 import os
 import subprocess
 import sys
+import tempfile # Add this import
+from importlib import resources # Add this import
 
 from src.config.security import LOG
 from src.qt_utils import run_in_qt_thread
@@ -50,9 +52,6 @@ def run_focus_steps(is_modal: bool = False) -> None:
 # -- audio playback ---
 
 # -- audio playback ---
-
-import tempfile # Add this import
-from importlib import resources # Add this import
 
 def play(audio_path: str) -> None:
     """
