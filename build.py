@@ -183,7 +183,7 @@ def package_iss():
 
 def main():
     parser = argparse.ArgumentParser(description="Build script for PrayerPlayer.")
-    parser.add_argument("command", choices=["clean", "deps", "build", "package", "all"], help="The command to execute.")
+    parser.add_argument("command", nargs="?", choices=["clean", "deps", "build", "package", "all"], help="The command to execute.")
     parser.add_argument("--release", action="store_true", help="Perform a full release build (all steps).")
 
     args = parser.parse_args()
@@ -193,19 +193,22 @@ def main():
         install_dependencies()
         build_executable()
         package_application()
-    elif args.command == "clean":
-        clean()
-    elif args.command == "deps":
-        install_dependencies()
-    elif args.command == "build":
-        build_executable()
-    elif args.command == "package":
-        package_application()
-    elif args.command == "all":
-        clean()
-        install_dependencies()
-        build_executable()
-        package_application()
+    elif args.command:
+        if args.command == "clean":
+            clean()
+        elif args.command == "deps":
+            install_dependencies()
+        elif args.command == "build":
+            build_executable()
+        elif args.command == "package":
+            package_application()
+        elif args.command == "all":
+            clean()
+            install_dependencies()
+            build_executable()
+            package_application()
+    else:
+        parser.print_help()
 
 
 if __name__ == "__main__":
