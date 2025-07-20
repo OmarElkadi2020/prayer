@@ -4,10 +4,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, timedelta
 from typing import Optional
 
-from src.config.security import TZ, BUSY_SLOT, LOG
+from src.config.security import LOG
 from .calendar_api.base import CalendarService
 from .calendar_api.google_calendar import GoogleCalendarService
 # from .calendar_api.microsoft_calendar import MicrosoftCalendarService

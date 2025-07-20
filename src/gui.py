@@ -4,17 +4,14 @@ import os
 import sys
 import requests
 import threading
-import webbrowser
 
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QGridLayout, QHBoxLayout,
     QLabel, QComboBox, QPushButton, QMessageBox, QCheckBox,
     QTabWidget, QFileDialog, QFrame
 )
-from PySide6.QtCore import Signal, QObject, Qt
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtCore import Signal, QObject
 
-import logging
 from src.config.security import load_config, save_config, adhan_path, LOG
 from src.auth import google_auth
 from src.platform.service import ServiceManager
@@ -344,7 +341,6 @@ class SettingsWindow(QWidget):
                     self.service_manager.uninstall()
             
             # Re-initialize and refresh the scheduler with the new config
-            from src.__main__ import main as main_app
             # This is a bit of a hack, but it's the simplest way to re-trigger the main logic
             # In a more advanced app, we might have a dedicated refresh signal/slot mechanism
             

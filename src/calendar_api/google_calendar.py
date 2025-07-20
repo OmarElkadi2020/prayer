@@ -1,11 +1,9 @@
-import os
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 
 from googleapiclient.discovery import build
 
 from .base import CalendarService
-from src.auth.google_auth import get_google_credentials
 
 class GoogleCalendarService(CalendarService):
     """

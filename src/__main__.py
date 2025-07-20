@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 import sys
-import threading
 from src.config.security import get_asset_path, load_config, LOG, parse_args
 from src.scheduler import PrayerScheduler
 from src.state import state_manager

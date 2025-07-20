@@ -1,7 +1,7 @@
 
 
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 from src.presenter.focus_steps_presenter import FocusStepsPresenter
 
 # Define a dummy STEPS list for consistent testing

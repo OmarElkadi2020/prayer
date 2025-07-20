@@ -4,19 +4,15 @@
 from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Dict, Optional, TYPE_CHECKING
-from importlib import resources
 import threading
-import time
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from src.config.security import TZ, BUSY_SLOT, FOCUS_DELAY, LOG, load_config, adhan_path
+from src.config.security import TZ, BUSY_SLOT, LOG
 from src.qt_utils import run_in_qt_thread
-from src.actions_executor import ActionExecutor, DefaultActionExecutor, DryRunActionExecutor
+from src.actions_executor import ActionExecutor, DryRunActionExecutor
 
-from .prayer_times import today_times
-from .state import state_manager, AppState
-from .exceptions import CalendarSyncError
+from .state import AppState
 
 
 if TYPE_CHECKING:
