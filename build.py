@@ -29,9 +29,9 @@ def clean():
 def install_dependencies():
     """Install Python dependencies."""
     print("--- Installing Python dependencies ---")
-    subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "pip"], check=True)
-    subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check=True)
-    subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements-dev.txt"], check=True)
+    subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "pip", "--verbose"], check=True)
+    subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt", "--verbose"], check=True)
+    subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements-dev.txt", "--verbose"], check=True)
     print("Dependencies installed.")
 
 def create_google_config(google_client_config_json_content=None):
