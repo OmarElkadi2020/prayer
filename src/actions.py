@@ -53,6 +53,9 @@ def run_focus_steps(is_modal: bool = False) -> None:
 
 # -- audio playback ---
 
+import tempfile # Add this import
+from importlib import resources # Add this import
+
 def play(audio_path: str) -> None:
     """
     Plays the given audio file using a suitable method for the current platform.
