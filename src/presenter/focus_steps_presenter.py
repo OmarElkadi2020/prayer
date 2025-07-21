@@ -42,8 +42,6 @@ def load_steps_from_file(file_path):
     
     return steps
 
-import sys
-
 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
     # Running in a PyInstaller bundle
     STEPS_FILE_PATH = os.path.join(sys._MEIPASS, 'config', 'steps_content.txt')

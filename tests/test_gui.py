@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtWidgets import QApplication
 from src.gui import SettingsWindow
 from src.auth import google_auth
 

@@ -1,9 +1,8 @@
 import unittest
 from unittest.mock import patch, MagicMock
-import os
 
 # Assuming these are the relevant modules
-from src.gui import Worker, SettingsWindow # Import Worker and SettingsWindow
+from src.gui import Worker # Import Worker and SettingsWindow
 from src.auth import google_auth
 
 class TestCalendarIntegrationPrompt(unittest.TestCase):
