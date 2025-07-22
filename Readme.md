@@ -108,6 +108,10 @@ To remove the Prayer Player application and all related files (for manual/develo
 
 ```bash
 python uninstall.py
-```
-
 This script will remove the virtual environment and configuration files. If you installed via a standalone installer, please use your operating system's standard uninstallation method (e.g., "Add or Remove Programs" on Windows, dragging to Trash on macOS).
+
+---
+
+## License
+
+This project is licensed under the GPLv3 License - see the [LICENSE](LICENSE) file for details.
