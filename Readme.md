@@ -8,18 +8,16 @@ Prayer Player is an intelligent assistant that helps you seamlessly integrate yo
 
 ## Features
 
-- **Automatic Prayer Times**: Fetches daily prayer times for any city using the aladhan.com API.
-- **Intelligent Scheduling**: Integrates with your Google Calendar to find available slots for prayers, ensuring your spiritual duties don't clash with your work.
-- **Audio Reminders**: Plays the Adhan (call to prayer) at the scheduled times.
-- **Focus Mode**: Helps you concentrate on your prayers by minimizing distractions on your computer.
-- **Cross-Platform**: Works on Windows, macOS, and Linux.
-- **System Tray Icon**: Provides easy access to settings and controls.
+-   **Automatic Prayer Times:** Fetches daily prayer times for any city.
+-   **Intelligent Scheduling:** Integrates with your Google Calendar to find available slots for prayers and focus sessions, avoiding conflicts with your existing schedule.
+-   **Audio Notifications:** Plays the Adhan (call to prayer) at the scheduled times.
+-   **Focus Mode:** Helps you minimize distractions during prayer times.
+-   **Cross-Platform:** Runs on Windows, macOS, and Linux.
+-   **System Tray Integration:** Provides a convenient tray icon to access settings and control the application.
 
 ## Installation
 
-### For End-Users (Recommended)
-
-Download the latest installer for your operating system from the [**Releases**](https://github.com/OmarElkadi2020/prayer/releases) page.
+The easiest way to install Prayer Player is to download the latest installer for your operating system from the [**GitHub Releases**](https://github.com/Omar-Elawady/prayer-player/releases) page.
 
 | OS      | File Type |
 | :------ | :-------- |
@@ -27,23 +25,40 @@ Download the latest installer for your operating system from the [**Releases**](
 | macOS   | `.dmg`    |
 | Linux   | `.deb`    |
 
-### For Developers
+## Getting Started
 
-If you want to run the application from the source code:
+1.  **Launch the application.** After installation, you can find Prayer Player in your system's application menu.
+2.  **Configure your location.** When you first run the application, a settings window will appear. Set your city and country to ensure accurate prayer times.
+3.  **Customize settings.** Use the settings window to choose your preferred prayer time calculation method, select a custom Adhan sound, and connect your Google Calendar.
+4.  **Let it run.** The application will run in the background and notify you at prayer times. You can access the settings at any time from the system tray icon.
 
-1.  **Clone the repository:**
+---
+
+## Contributing
+
+We welcome contributions to Prayer Player! Whether you want to fix a bug, add a feature, or improve the documentation, your help is appreciated.
+
+### Development Setup
+
+To get started with development, you'll need to set up a local development environment.
+
+1.  **Prerequisites:**
+    -   [Python 3.8+](https://www.python.org/downloads/)
+    -   [Git](https://git-scm.com/downloads)
+
+2.  **Clone the repository:**
     ```bash
     git clone https://github.com/Omar-Elawady/prayer-player.git
     cd prayer-player
     ```
 
-2.  **Run the installer script:**
-    This will create a virtual environment and install all the required dependencies.
+3.  **Run the installer script:**
+    This script will create a virtual environment (`myenv`) and install all the necessary dependencies.
     ```bash
     python installer.py
     ```
 
-3.  **Run the application:**
+4.  **Run the application:**
     -   **Linux/macOS:**
         ```bash
         ./myenv/bin/prayer-player
@@ -53,43 +68,33 @@ If you want to run the application from the source code:
         .\myenv\Scripts\prayer-player.exe
         ```
 
-## Configuration
+### Running Tests
 
-The application can be configured through the settings window, which is accessible from the system tray icon.
+The project uses `pytest` for testing. To run the tests, first install the development dependencies:
 
-### Command-line Arguments
+```bash
+pip install -r requirements-dev.txt
+```
 
-| Argument           | Description                                                                                             |
-| :----------------- | :------------------------------------------------------------------------------------------------------ |
-| `--city`           | The city for which to fetch prayer times.                                                               |
-| `--country`        | The country for the city.                                                                               |
-| `--method`         | The calculation method for prayer times. See [Aladhan API Docs](https://aladhan.com/prayer-times-api#GetTimingsByCity) for details. |
-| `--school`         | The school of thought for Asr prayer (0 for Shafi'i, Maliki, Hanbali; 1 for Hanafi).                     |
-| `--dry-run`        | Schedules jobs but does not run the scheduler. Useful for testing.                                      |
-| `--log-level`      | Sets the logging level (e.g., `DEBUG`, `INFO`, `WARNING`, `ERROR`).                                       |
-| `--install-service`| Installs the application as a systemd service for automatic startup (Linux only).                       |
+Then, run `pytest` from the project root:
 
-## Calendar Integration
+```bash
+pytest
+```
 
-To integrate with Google Calendar:
+### Building from Source
 
-1.  Go to the [Google Cloud Console](https://console.cloud.google.com/).
-2.  Create a new project.
-3.  Enable the **Google Calendar API**.
-4.  Create credentials for a **Desktop app**.
-5.  Download the `google_client_config.json` file.
-6.  Place the `google_client_config.json` file in the root of the project directory if you are running from source, or in the user's data directory if you are using the installed version. The installer script will handle this for you.
+The `build.py` script handles the process of building the application from source.
 
-## Uninstallation
-
--   **Windows**: Use the "Add or Remove Programs" feature.
--   **macOS**: Drag the application to the Trash.
--   **Linux**: Use your package manager to remove the `prayer-player` package (e.g., `sudo apt remove prayer-player`).
--   **Developer Install**: Run the `uninstall.py` script to remove the virtual environment and configuration files.
+-   **Build the executable:**
     ```bash
-    python uninstall.py
+    python build.py build
+    ```
+-   **Create an installer package:**
+    ```bash
+    python build.py package
     ```
 
 ## License
 
-This project is licensed under the GPLv3 License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GPLv3 License. See the [LICENSE](LICENSE) file for details.
