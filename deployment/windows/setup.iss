@@ -10,7 +10,7 @@
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId for another application.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE, or use an online GUID generator.)
-AppId={{YOUR_UNIQUE_GUID_HERE}} ; IMPORTANT: Replace this with a unique GUID for your application!
+AppId={{be0fafc1-d93a-4c2d-8b8e-875205cae36d}} ; IMPORTANT: Replace this with a unique GUID for your application!
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
@@ -22,7 +22,8 @@ DisableProgramGroupPage=yes
 ; Uncomment the following line to run in non administrative install mode (install for current user only.)
 ;PrivilegesRequired=lowest
 OutputBaseFilename=PrayerPlayerSetup
-SetupIconFile=src\assets\mosque.ico ; IMPORTANT: Inno Setup expects .ico files. You might need to convert src/assets/mosque.png to .ico
+; IMPORTANT: Inno Setup expects .ico files. You might need to convert src/assets/mosque.png to .ico
+SetupIconFile=src\assets\mosque.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
