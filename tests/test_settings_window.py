@@ -3,7 +3,6 @@ from unittest.mock import patch, MagicMock
 from PySide6.QtWidgets import QApplication
 from src.shared.event_bus import EventBus
 from src.gui.settings_window import SettingsWindow
-from src.auth import google_auth
 from src.domain.config_messages import SaveConfigurationCommand
 from src.config.schema import Config
 
