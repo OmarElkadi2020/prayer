@@ -65,6 +65,9 @@ class GoogleCalendarService(CalendarService):
         day_start = start_time.replace(hour=0, minute=0, second=0, microsecond=0)
         day_end = day_start + timedelta(days=1)
         
+        LOG.debug(f"DEBUG (find_first_available_slot): Initial start_time (UTC): {start_time}")
+        LOG.debug(f"DEBUG (find_first_available_slot): day_start (UTC): {day_start}, day_end (UTC): {day_end}")
+
         events = sorted(self.get_events(day_start, day_end), key=lambda x: (
             datetime.fromisoformat(x['start']['dateTime']).astimezone(utc_zone) if 'dateTime' in x['start']
             else datetime.fromisoformat(x['start']['date']).replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=utc_zone)
@@ -74,6 +77,7 @@ class GoogleCalendarService(CalendarService):
         current_slot_start = start_time
 
         for event in events:
+            LOG.debug(f"DEBUG (find_first_available_slot): Current slot start at iteration beginning: {current_slot_start}")
             event_start_data = event.get('start')
             event_end_data = event.get('end')
 
@@ -89,6 +93,8 @@ class GoogleCalendarService(CalendarService):
             elif event_end_data and 'date' in event_end_data:
                 event_end_str = event_end_data['date']
 
+            LOG.debug(f"DEBUG (find_first_available_slot): Processing event: start_str={event_start_str}, end_str={event_end_str}")
+
             if not event_start_str or not event_end_str:
                 LOG.debug(f"Skipping event due to missing or empty start/end time data: start={event_start_data}, end={event_end_data}")
                 continue
@@ -98,17 +104,15 @@ class GoogleCalendarService(CalendarService):
                 continue
 
             try:
-                if 'dateTime' in event_start_data:
-                    event_start = datetime.fromisoformat(event_start_str).astimezone(utc_zone)
-                else:
-                    # Handle date-only events, assume start of day in UTC
-                    event_start = datetime.fromisoformat(event_start_str).replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=utc_zone)
+                is_all_day_event = 'date' in event_start_data and 'dateTime' not in event_start_data
 
-                if 'dateTime' in event_end_data:
-                    event_end = datetime.fromisoformat(event_end_str).astimezone(utc_zone)
-                else:
-                    # Handle date-only events, assume end of day in UTC (or start of next day)
-                    event_end = datetime.fromisoformat(event_end_str).replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=utc_zone)
+                if is_all_day_event:
+                    LOG.debug(f"DEBUG (find_first_available_slot): Skipping all-day event: {event.get('summary')}")
+                    continue # Skip all-day events for slot finding
+
+                event_start = datetime.fromisoformat(event_start_str).astimezone(utc_zone)
+                event_end = datetime.fromisoformat(event_end_str).astimezone(utc_zone)
+                LOG.debug(f"DEBUG (find_first_available_slot): Parsed event: start={event_start}, end={event_end}")
 
             except ValueError as ve:
                 LOG.error(f"Failed to parse event time string '{event_start_str}' or '{event_end_str}': {ve}")
@@ -116,13 +120,16 @@ class GoogleCalendarService(CalendarService):
 
             # If the current potential slot ends before the event starts, we found a slot
             if current_slot_start + timedelta(minutes=duration_minutes) <= event_start:
+                LOG.debug(f"DEBUG (find_first_available_slot): Found slot before event. Returning {current_slot_start}")
                 return current_slot_start
 
             # If there's an overlap, move the current_slot_start past the end of the current event
             if current_slot_start < event_end:
+                LOG.debug(f"DEBUG (find_first_available_slot): Overlap detected. Moving current_slot_start from {current_slot_start} to {event_end}")
                 current_slot_start = event_end
 
         # If no more events, the current_slot_start is available
+        LOG.debug(f"DEBUG (find_first_available_slot): No more events. Returning final current_slot_start: {current_slot_start.astimezone(utc_zone)}")
         return current_slot_start.astimezone(utc_zone)
     
     def add_event(self, start_time: datetime, summary: str, duration_minutes: int) -> bool:
