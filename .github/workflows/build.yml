@@ -90,6 +90,15 @@ jobs:
           # Run the application directly with dry run arguments
           dist/PrayerPlayer.app/Contents/MacOS/PrayerPlayer --dry-run --country "Germany" --city "Deggendorf" || true
 
+      - name: Debug Windows Build Artifacts
+        if: runner.os == 'Windows'
+        run: |
+          echo "Listing contents of dist/PrayerPlayer:"
+          Get-ChildItem dist/PrayerPlayer -Recurse
+          echo ""
+          echo "Contents of src/config/security/google_client_config.json:"
+          Get-Content src/config/security/google_client_config.json || true
+
       - name: Dry run built application (Windows)
         if: runner.os == 'Windows'
         run: |
