@@ -5,6 +5,7 @@ import random
 import os
 import sys
 from importlib import resources
+from src.config.security import LOG
 
 def load_steps_from_file(file_path):
     """
@@ -37,7 +38,7 @@ def load_steps_from_file(file_path):
             
             steps.append((title, description))
     except FileNotFoundError:
-        print(f"Error: Could not find the steps content file at '{file_path}'.")
+        LOG.error(f"Could not find the steps content file at '{file_path}'.")
         return [("Error", f"Content file not found:\n{file_path}")]
     
     return steps

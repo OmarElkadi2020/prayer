@@ -204,6 +204,7 @@ class PrayerScheduler:
             slot = at
 
             if self.calendar_service:
+                LOG.debug(f"Attempting to add calendar event for {name} at {at}")
                 try:
                     self.calendar_service.add_event(
                         start_time=at,
