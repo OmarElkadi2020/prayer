@@ -4,6 +4,7 @@ import sys
 import subprocess
 import shutil
 import argparse
+from PIL import Image
 
 from src.__version__ import __version__ as VERSION
 
@@ -11,7 +12,8 @@ from src.__version__ import __version__ as VERSION
 APP_NAME = "PrayerPlayer"
 PACKAGE_NAME = "prayer-player"
 ENTRY_POINT = "src/__main__.py"
-ICON_PATH = "src/assets/mosque.png"
+ICON_PATH_PNG = "src/assets/mosque.png"
+ICON_PATH_ICO = "src/assets/mosque.ico" # New ICO path
 DEB_STAGING_DIR = f"{PACKAGE_NAME}-deb-staging"
 
 def clean():
@@ -60,9 +62,15 @@ def build_executable():
     if sys.platform == "darwin":
         pyinstaller_command.append("PrayerPlayer-mac.spec")
     else:
+        if sys.platform == "win32":
+            convert_png_to_ico(ICON_PATH_PNG, ICON_PATH_ICO)
+            icon_to_use = ICON_PATH_ICO
+        else: # Linux
+            icon_to_use = ICON_PATH_PNG
+
         pyinstaller_command.extend([
             "--name", APP_NAME,
-            "--icon", ICON_PATH,
+            "--icon", icon_to_use,
             "--add-data", "src/assets:assets",
             "--add-data", "src/config:config",
             "--hidden-import", "src.auth",
@@ -82,6 +90,19 @@ def build_executable():
 
     subprocess.run(pyinstaller_command, check=True)
     print("PyInstaller build complete.")
+
+def convert_png_to_ico(png_path, ico_path):
+    """Converts a PNG image to an ICO format."""
+    print(f"--- Converting {png_path} to {ico_path} ---")
+    try:
+        img = Image.open(png_path)
+        # ICO files typically support multiple sizes. We'll save a common size.
+        # Inno Setup can use a single ICO file with multiple resolutions.
+        img.save(ico_path, format='ICO', sizes=[(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (16, 16)])
+        print("Conversion successful.")
+    except Exception as e:
+        print(f"Error converting PNG to ICO: {e}")
+        sys.exit(1)
 
 def package_application():
     """Package the application for the current operating system."""
