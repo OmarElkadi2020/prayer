@@ -23,7 +23,7 @@ DisableProgramGroupPage=yes
 ;PrivilegesRequired=lowest
 OutputBaseFilename=PrayerPlayerSetup
 ; IMPORTANT: Inno Setup expects .ico files. You might need to convert src/assets/mosque.png to .ico
-SetupIconFile=src\assets\mosque.ico
+SetupIconFile=mosque.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
