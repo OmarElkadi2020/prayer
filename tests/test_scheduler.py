@@ -11,6 +11,7 @@ from src.domain.scheduler_messages import ScheduleRefreshedEvent, ApplicationSta
 from src.domain.enums import AppState
 from src.config.security import TZ
 from src.config.schema import Config
+from src.shared.commands import SimulatePrayerCommand
 
 class TestPrayerScheduler(unittest.TestCase):
 
@@ -33,7 +34,11 @@ class TestPrayerScheduler(unittest.TestCase):
         self.assertIsNotNone(self.scheduler.scheduler)
         self.assertEqual(self.scheduler.event_bus, self.mock_event_bus)
         self.assertEqual(self.scheduler.action_executor, self.mock_action_executor)
-        self.mock_event_bus.register.assert_called_once_with(ConfigurationChangedEvent, self.scheduler._handle_config_change)
+        expected_calls = [
+            call(ConfigurationChangedEvent, self.scheduler._handle_config_change),
+            call(SimulatePrayerCommand, self.scheduler._handle_simulate_prayer_command)
+        ]
+        self.mock_event_bus.register.assert_has_calls(expected_calls, any_order=True)
 
     @patch('src.scheduler.PrayerScheduler._update_next_prayer_info')
     def test_refresh_schedules_prayers(self, mock_update_next_prayer_info):

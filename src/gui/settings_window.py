@@ -17,6 +17,7 @@ from src.auth import google_auth
 from src.shared.event_bus import EventBus
 from src.platform.service import ServiceManager
 from src.shared.audio_player import play
+from src.shared.commands import SimulatePrayerCommand
 
 class Worker(QObject):
     """Worker object for running tasks in a separate thread."""
@@ -216,7 +217,24 @@ class SettingsWindow(QWidget):
         
         self.custom_audio_label = QLabel("Using default adhan sound.")
         layout.addWidget(self.custom_audio_label, len(prayers) + 2, 0, 1, 2)
-        layout.setRowStretch(len(prayers) + 3, 1)
+
+        # --- Simulate Prayer Section ---
+        simulate_line = QFrame()
+        simulate_line.setFrameShape(QFrame.HLine)
+        simulate_line.setFrameShadow(QFrame.Sunken)
+        layout.addWidget(simulate_line, len(prayers) + 3, 0, 1, 2)
+
+        layout.addWidget(QLabel("<b>Simulate Prayer</b>"), len(prayers) + 4, 0, 1, 2)
+        
+        self.simulate_prayer_combo = QComboBox()
+        self.simulate_prayer_combo.addItems(prayers)
+        layout.addWidget(self.simulate_prayer_combo, len(prayers) + 5, 0)
+
+        self.simulate_prayer_button = QPushButton("Simulate Selected Prayer")
+        self.simulate_prayer_button.clicked.connect(self._on_simulate_prayer_clicked)
+        layout.addWidget(self.simulate_prayer_button, len(prayers) + 5, 1)
+
+        layout.setRowStretch(len(prayers) + 6, 1)
 
     def init_about_tab(self):
         layout = QGridLayout(self.about_tab)
@@ -288,6 +306,15 @@ class SettingsWindow(QWidget):
             play(audio_path)
         else:
             self.update_status("Audio file not found.", "red")
+
+    def _on_simulate_prayer_clicked(self):
+        selected_prayer = self.simulate_prayer_combo.currentText()
+        if selected_prayer:
+            self.update_status(f"Simulating {selected_prayer} prayer...", "blue")
+            from src.shared.commands import SimulatePrayerCommand
+            self.event_bus.dispatch(SimulatePrayerCommand(prayer_name=selected_prayer))
+        else:
+            self.update_status("Please select a prayer to simulate.", "red")
 
     def update_status(self, message: str, color: str = "blue"):
         self.status_label.setText(message)

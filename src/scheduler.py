@@ -15,6 +15,7 @@ from src.shared.event_bus import EventBus
 from src.domain.config_messages import ConfigurationChangedEvent
 from src.domain.enums import AppState
 from src.domain.scheduler_messages import ApplicationStateChangedEvent, ScheduleRefreshedEvent
+from src.shared.commands import SimulatePrayerCommand
 
 
 if TYPE_CHECKING:
@@ -38,6 +39,7 @@ class PrayerScheduler:
         self.scheduler = BackgroundScheduler(timezone=TZ, job_defaults=job_defaults)
 
         self.event_bus.register(ConfigurationChangedEvent, self._handle_config_change)
+        self.event_bus.register(SimulatePrayerCommand, self._handle_simulate_prayer_command)
 
 
     def set_audio_path(self, audio_path: str):
@@ -263,3 +265,16 @@ class PrayerScheduler:
             )
         else:
             LOG.warning("Cannot refresh schedule, city or country not provided in config change event.")
+
+    def _handle_simulate_prayer_command(self, command: SimulatePrayerCommand):
+        LOG.info(f"Received SimulatePrayerCommand for {command.prayer_name}.")
+        now = datetime.now(TZ)
+        # Schedule the simulation 5 seconds from now
+        simulation_time = now + timedelta(seconds=5)
+        self._schedule_single_prayer_job(
+            name=f"simulated-{command.prayer_name}",
+            at=simulation_time,
+            is_dry_run=True # Use dry_run=True for simulation
+        )
+        LOG.info(f"Scheduled simulated {command.prayer_name} prayer for {simulation_time.strftime('%H:%M:%S')}.")
+        self.event_bus.publish(ScheduleRefreshedEvent(next_prayer_info=f"Simulated {command.prayer_name} at {simulation_time.strftime('%H:%M:%S')}"))
