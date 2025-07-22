@@ -73,6 +73,8 @@ jobs:
       - name: Build application
         run: python build.py --release --google-client-config '${{ secrets.GOOGLE_CLIENT_CONFIG }}'
 
+      
+
       - name: Dry run built application (Linux)
         if: runner.os == 'Linux'
         run: |

@@ -1,4 +1,4 @@
-[![Build Status](https://github.com/Omar-Elawady/prayer-player/actions/workflows/build.yml/badge.svg)](https://github.com/Omar-Elawady/prayer-player/actions/workflows/build.yml)
+[![Build Status](https://github.com/Omar-Elawady/prayer-player/actions/workflows/build.yml/badge.svg)](https://github.com/OmarElkadi2020/prayer/actions/workflows/build.yml)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/Omar-Elawady/prayer-player)](https://github.com/Omar-Elawady/prayer-player/releases/latest)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
@@ -17,7 +17,7 @@ Prayer Player is an intelligent assistant that helps you seamlessly integrate yo
 
 ## Installation
 
-The easiest way to install Prayer Player is to download the latest installer for your operating system from the [**GitHub Releases**](https://github.com/Omar-Elawady/prayer-player/releases) page.
+The easiest way to install Prayer Player is to download the latest installer for your operating system from the [**GitHub Releases**](https://github.com/OmarElkadi2020/prayer/actions/workflows/release.yml) page.
 
 | OS      | File Type |
 | :------ | :-------- |
