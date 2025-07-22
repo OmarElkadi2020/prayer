@@ -164,7 +164,8 @@ Categories=Utility;
 
     # Copy application files
     shutil.copy(os.path.join("dist", APP_NAME), install_dir)
-    shutil.copy(ICON_PATH, os.path.join(icon_dir, f"{PACKAGE_NAME}.png"))
+    shutil.copy(ICON_PATH_PNG, os.path.join(icon_dir, f"{PACKAGE_NAME}.png"))
+    shutil.copy(ICON_PATH_ICO, os.path.join(icon_dir, f"{PACKAGE_NAME}.ico"))
 
     # Copy Google client config to system-wide config directory
     system_config_dir = os.path.join(DEB_STAGING_DIR, "usr", "share", PACKAGE_NAME, "config", "security")
