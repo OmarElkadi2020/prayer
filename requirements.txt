@@ -18,5 +18,3 @@ pydantic
 pydub
 Pillow
 appdirs
-PIL
-

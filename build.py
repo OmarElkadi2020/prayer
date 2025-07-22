@@ -4,7 +4,6 @@ import sys
 import subprocess
 import shutil
 import argparse
-from PIL import Image
 
 from src.__version__ import __version__ as VERSION
 
@@ -63,7 +62,6 @@ def build_executable():
         pyinstaller_command.append("PrayerPlayer-mac.spec")
     else:
         if sys.platform == "win32":
-            convert_png_to_ico(ICON_PATH_PNG, ICON_PATH_ICO)
             icon_to_use = ICON_PATH_ICO
         else: # Linux
             icon_to_use = ICON_PATH_PNG
@@ -90,19 +88,6 @@ def build_executable():
 
     subprocess.run(pyinstaller_command, check=True)
     print("PyInstaller build complete.")
-
-def convert_png_to_ico(png_path, ico_path):
-    """Converts a PNG image to an ICO format."""
-    print(f"--- Converting {png_path} to {ico_path} ---")
-    try:
-        img = Image.open(png_path)
-        # ICO files typically support multiple sizes. We'll save a common size.
-        # Inno Setup can use a single ICO file with multiple resolutions.
-        img.save(ico_path, format='ICO', sizes=[(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (16, 16)])
-        print("Conversion successful.")
-    except Exception as e:
-        print(f"Error converting PNG to ICO: {e}")
-        sys.exit(1)
 
 def package_application():
     """Package the application for the current operating system."""
