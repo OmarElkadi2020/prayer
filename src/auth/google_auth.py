@@ -6,6 +6,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from appdirs import user_data_dir
+from src.config.security import LOG
 
 
 
@@ -30,7 +31,7 @@ def get_google_credentials(reauthenticate=False):
 
     if reauthenticate and os.path.exists(TOKEN_FILE):
         os.remove(TOKEN_FILE)
-        print("Existing token deleted. Re-authenticating...")
+        LOG.info("Existing token deleted. Re-authenticating...")
 
     if os.path.exists(TOKEN_FILE):
         with open(TOKEN_FILE, 'r') as token:
@@ -49,7 +50,7 @@ def get_google_credentials(reauthenticate=False):
                 if os.path.exists(SYSTEM_CONFIG_PATH):
                     config_path = SYSTEM_CONFIG_PATH
                 # 2. Check PyInstaller temporary extraction path (for bundled applications)
-                elif sys.frozen and hasattr(sys, '_MEIPASS'):
+                elif getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
                     pyinstaller_path = os.path.join(sys._MEIPASS, 'config', 'security', 'google_client_config.json')
                     if os.path.exists(pyinstaller_path):
                         config_path = pyinstaller_path
@@ -92,7 +93,7 @@ def get_user_info(creds):
         user_info = service.userinfo().get().execute()
         return user_info
     except Exception as e:
-        print(f"An error occurred: {e}")
+        LOG.error(f"An error occurred: {e}")
         return None
 
 def get_calendar_list(creds):
@@ -102,5 +103,5 @@ def get_calendar_list(creds):
         calendar_list = service.calendarList().list().execute()
         return calendar_list.get('items', [])
     except Exception as e:
-        print(f"An error occurred while fetching calendar list: {e}")
+        LOG.error(f"An error occurred while fetching calendar list: {e}")
         return []

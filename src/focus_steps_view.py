@@ -27,6 +27,7 @@ from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QFont, QIcon, QGuiApplication
 from PySide6.QtMultimedia import QSoundEffect
 from src.presenter.focus_steps_presenter import FocusStepsPresenter
+from src.config.security import LOG
 
 # --- Configuration Constants ---
 # Using constants for better maintainability and clarity.
@@ -43,7 +44,7 @@ def get_asset_path(package, resource):
         with resources.path(package, resource) as p:
             return str(p)
     except (FileNotFoundError, ModuleNotFoundError):
-        print(f"Warning: Asset '{resource}' not found in package '{package}'.")
+        LOG.warning(f"Asset '{resource}' not found in package '{package}'.")
         return ""
 
 # --- Constants ---

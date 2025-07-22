@@ -7,10 +7,13 @@ from __future__ import annotations
 import sys
 from src.config.security import get_asset_path, load_config, LOG, parse_args
 from src.scheduler import PrayerScheduler
-from src.state import state_manager
 from src.prayer_times import today_times
 from src.auth.google_auth import get_google_credentials
 from src.calendar_api.google_calendar import GoogleCalendarService
+from src.shared.event_bus import EventBus
+from src.services.config_service import ConfigService
+
+from src.domain.config_messages import SaveConfigurationCommand
 
 def duaa_path():
     return str(get_asset_path('duaa_after_adhan.wav'))
@@ -61,6 +64,15 @@ def main(argv: list[str] | None = None) -> int:
     # Parse arguments here for dry-run check
     args = parse_args(raw_argv)
 
+    # --- Event Bus Setup ---
+    event_bus = EventBus()
+
+    # --- Service Initialization ---
+    config_service = ConfigService(event_bus)
+    
+    # --- Register Handlers ---
+    event_bus.register(SaveConfigurationCommand, config_service.handle_save_command)
+
     # --- Composition Root ---
     config = load_config()
 
@@ -79,15 +91,15 @@ def main(argv: list[str] | None = None) -> int:
 
     # Determine action executor
     from src.actions_executor import DefaultActionExecutor, DryRunActionExecutor
-    action_executor = DryRunActionExecutor() if args.dry_run else DefaultActionExecutor()
+    action_executor = DryRunActionExecutor() if args.dry_run else DefaultActionExecutor(event_bus)
 
     # Initialize scheduler
     scheduler = PrayerScheduler(
         audio_path=duaa_path(),
         calendar_service=calendar_service,
-        state_manager=state_manager,
         prayer_times_func=today_times,
-        action_executor=action_executor
+        action_executor=action_executor,
+        event_bus=event_bus
     )
 
     # Handle --dry-run directly
@@ -120,7 +132,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         LOG.warning("No city/country configured. Scheduler will not run.")
 
-    return tray_icon.setup_tray_icon(raw_argv, scheduler, dry_run=args.dry_run)
+    return tray_icon.setup_tray_icon(raw_argv, scheduler, event_bus, dry_run=args.dry_run)
 
 
 if __name__ == "__main__":

@@ -14,13 +14,14 @@ from zoneinfo import ZoneInfo
 from importlib import resources
 from appdirs import user_config_dir
 from src.config.schema import Config
+from logging.handlers import RotatingFileHandler
 
 def get_asset_path(filename):
     """
     Returns a path-like object for an asset in the 'prayer.assets' package.
     This works for both development and PyInstaller-packaged modes.
     """
-    return resources.files('assets').joinpath(filename)
+    return resources.files('src.assets').joinpath(filename)
 
 # --- Default Paths ---
 DEFAULT_ADHAN_PATH = get_asset_path('adhan.wav')
@@ -42,8 +43,8 @@ APP_NAME = "PrayerPlayer"
 APP_AUTHOR = "Omar"
 
 CONFIG_DIR = user_config_dir(APP_NAME, APP_AUTHOR)
-print(f"CONFIG_DIR: {CONFIG_DIR}")
 CONFIG_FILE_PATH = os.path.join(CONFIG_DIR, 'config.json')
+LOG_FILE_PATH = os.path.join(CONFIG_DIR, 'app.log')
 
 def load_config() -> Config:
     """
@@ -73,9 +74,25 @@ def save_config(config: Config):
 LOG = logging.getLogger("adhan")
 # Ensure handlers are added only once to prevent duplicate log messages
 if not LOG.handlers:
+    # Ensure log directory exists
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+
     _log_stream = logging.StreamHandler(sys.stdout)
     _log_stream.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s - %(message)s"))
     LOG.addHandler(_log_stream)
+
+    _log_file_handler = RotatingFileHandler(
+        LOG_FILE_PATH,
+        maxBytes=1024 * 1024 * 5,  # 5 MB
+        backupCount=5,
+        encoding='utf-8'
+    )
+    _log_file_handler.setFormatter(logging.Formatter("[%(asctime)s] %(name)s - %(levelname)s - %(message)s"))
+    LOG.addHandler(_log_file_handler)
+
+# Suppress googleapiclient's INFO logs by default
+logging.getLogger('googleapiclient.discovery').setLevel(logging.WARNING)
+logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.WARNING)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:

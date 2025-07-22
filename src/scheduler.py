@@ -11,8 +11,11 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from src.config.security import TZ, BUSY_SLOT, LOG
 from src.qt_utils import run_in_qt_thread
 from src.actions_executor import ActionExecutor, DryRunActionExecutor
-
-from .state import AppState
+from src.shared.event_bus import EventBus
+from src.domain.config_messages import ConfigurationChangedEvent
+from src.domain.enums import AppState
+from src.domain.scheduler_messages import ApplicationStateChangedEvent, ScheduleRefreshedEvent
+from src.shared.commands import SimulatePrayerCommand
 
 
 if TYPE_CHECKING:
@@ -24,16 +27,19 @@ class PrayerScheduler:
     It handles fetching prayer times, scheduling jobs, and preventing duplicates.
     """
 
-    def __init__(self, audio_path: str, calendar_service: Optional[CalendarService], state_manager, prayer_times_func, action_executor: ActionExecutor):
+    def __init__(self, audio_path: str, calendar_service: Optional[CalendarService], prayer_times_func, action_executor: ActionExecutor, event_bus: EventBus):
         self.audio_path = audio_path
         self.calendar_service = calendar_service
-        self.state_manager = state_manager
         self.prayer_times_func = prayer_times_func
         self.action_executor = action_executor
+        self.event_bus = event_bus
         job_defaults = {
             'misfire_grace_time': None
         }
         self.scheduler = BackgroundScheduler(timezone=TZ, job_defaults=job_defaults)
+
+        self.event_bus.register(ConfigurationChangedEvent, self._handle_config_change)
+        self.event_bus.register(SimulatePrayerCommand, self._handle_simulate_prayer_command)
 
 
     def set_audio_path(self, audio_path: str):
@@ -47,7 +53,7 @@ class PrayerScheduler:
         A daily refresh job is also scheduled to run shortly after midnight.
         This method is idempotent.
         """
-        self.state_manager.state = AppState.SYNCING
+        self.event_bus.publish(ApplicationStateChangedEvent(new_state=AppState.SYNCING))
         LOG.info(f"Refreshing prayer schedule for {city}, {country}")
         self.scheduler.remove_all_jobs()
         LOG.info("All previous jobs cleared.")
@@ -74,11 +80,11 @@ class PrayerScheduler:
             LOG.info("Next daily refresh job at 00:05 added to the scheduler.")
         except Exception as e:
             LOG.error(f"An error occurred during refresh: {e}")
-            self.state_manager.state = AppState.ERROR
+            self.event_bus.publish(ApplicationStateChangedEvent(new_state=AppState.ERROR))
         else:
-            self.state_manager.state = AppState.IDLE
+            self.event_bus.publish(ApplicationStateChangedEvent(new_state=AppState.IDLE))
             if dry_run:
-                self.state_manager.next_prayer_info = "Dry run: Prayer scheduled for immediate execution"
+                self.event_bus.publish(ScheduleRefreshedEvent(next_prayer_info="Dry run: Prayer scheduled for immediate execution"))
             else:
                 self._update_next_prayer_info()
 
@@ -95,7 +101,7 @@ class PrayerScheduler:
         A combined action to play adhan and duaa.
         """
         LOG.info("Executing play_adhan_and_duaa for scheduled job.")
-        self.state_manager.state = AppState.PRAYER_TIME
+        self.event_bus.publish(ApplicationStateChangedEvent(new_state=AppState.PRAYER_TIME))
         
         try:
             from src.config.security import get_asset_path
@@ -113,7 +119,7 @@ class PrayerScheduler:
         
         finally:
             LOG.info("Playback sequence complete. Setting state to IDLE.")
-            self.state_manager.state = AppState.IDLE
+            self.event_bus.publish(ApplicationStateChangedEvent(new_state=AppState.IDLE))
             # Do not update GUI components in a dry run, as there is no GUI.
             # This also prevents a race condition on scheduler shutdown.
             if not isinstance(self.action_executor, DryRunActionExecutor):
@@ -200,6 +206,7 @@ class PrayerScheduler:
             slot = at
 
             if self.calendar_service:
+                LOG.debug(f"Attempting to add calendar event for {name} at {at}")
                 try:
                     self.calendar_service.add_event(
                         start_time=at,
@@ -237,15 +244,37 @@ class PrayerScheduler:
             try:
                 prayer_name = next_prayer_job.id.split('-')[1]
                 info = f"{prayer_name} at {next_prayer_job.next_run_time.strftime('%H:%M')}"
-                self.state_manager.next_prayer_info = info
+                self.event_bus.publish(ScheduleRefreshedEvent(next_prayer_info=info))
                 LOG.info(f"Next prayer updated: {info}")
             except IndexError:
                 LOG.warning(f"Could not parse prayer name from job ID: {next_prayer_job.id}")
-                self.state_manager.next_prayer_info = "Error"
+                self.event_bus.publish(ScheduleRefreshedEvent(next_prayer_info="Error"))
         else:
-            self.state_manager.next_prayer_info = "No upcoming prayers"
+            self.event_bus.publish(ScheduleRefreshedEvent(next_prayer_info="No upcoming prayers"))
             LOG.info("No upcoming prayers scheduled for today.")
 
+    def _handle_config_change(self, event: ConfigurationChangedEvent):
+        LOG.info("ConfigurationChangedEvent received, refreshing schedule.")
+        config = event.config
+        if config.city and config.country:
+            self.refresh(
+                city=config.city,
+                country=config.country,
+                method=config.method,
+                school=config.school
+            )
+        else:
+            LOG.warning("Cannot refresh schedule, city or country not provided in config change event.")
 
-
-
+    def _handle_simulate_prayer_command(self, command: SimulatePrayerCommand):
+        LOG.info(f"Received SimulatePrayerCommand for {command.prayer_name}.")
+        now = datetime.now(TZ)
+        # Schedule the simulation 5 seconds from now
+        simulation_time = now + timedelta(seconds=5)
+        self._schedule_single_prayer_job(
+            name=f"simulated-{command.prayer_name}",
+            at=simulation_time,
+            is_dry_run=True # Use dry_run=True for simulation
+        )
+        LOG.info(f"Scheduled simulated {command.prayer_name} prayer for {simulation_time.strftime('%H:%M:%S')}.")
+        self.event_bus.publish(ScheduleRefreshedEvent(next_prayer_info=f"Simulated {command.prayer_name} at {simulation_time.strftime('%H:%M:%S')}"))

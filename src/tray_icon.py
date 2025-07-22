@@ -1,24 +1,25 @@
 import sys
-import threading
-import time
 from importlib import resources
 
 from PySide6.QtWidgets import QApplication, QMessageBox, QSystemTrayIcon, QMenu
 from PySide6.QtGui import QIcon, QAction, QPixmap
-from PySide6.QtCore import QObject, Signal, Qt
+from PySide6.QtCore import Qt
 
 from PIL import Image, ImageDraw
 from PIL.ImageQt import ImageQt
 
 from src.config.security import load_config, LOG
-from src import gui, scheduler
-from src.state import state_manager, AppState
+from src.gui.settings_window import SettingsWindow
+from src import scheduler
 from src.qt_utils import run_in_qt_thread
+from src.shared.event_bus import EventBus
+from src.domain.enums import AppState
+from src.domain.scheduler_messages import ApplicationStateChangedEvent, ScheduleRefreshedEvent
+from src.domain.notification_messages import FocusModeRequestedEvent
 
 # Globals
 settings_window = None
 focus_window = None
-ICON_UPDATE_INTERVAL = 2  # seconds
 
 def get_asset_path(package, resource):
     """Safely retrieves the path to a resource file within a package."""
@@ -56,59 +57,39 @@ def create_q_icon(base_path, state: AppState):
                 outline="white"
             )
         
-        # Convert PIL image to QPixmap for use in QIcon
         qimage = ImageQt(pil_image)
         pixmap = QPixmap.fromImage(qimage)
         return QIcon(pixmap)
         
     except FileNotFoundError:
-        # Return a placeholder QIcon if the base icon is missing
         pixmap = QPixmap(64, 64)
         pixmap.fill(Qt.transparent)
         return QIcon(pixmap)
 
-# ICONS will be initialized inside setup_tray_icon after QApplication is created.
-# ICONS = {}
-
-class IconUpdater(QObject):
-    # Signal will emit the application's state, not a GUI object.
-    update_state_signal = Signal(AppState)
-
-    def run(self):
-        """
-        This function runs in a loop in a separate thread and emits the current
-        application state periodically.
-        """
-        while True: # The thread will be a daemon, so it will exit with the app
-            current_state = state_manager.state
-            self.update_state_signal.emit(current_state)
-            time.sleep(ICON_UPDATE_INTERVAL)
-
 # --- Menu Actions ---
 @run_in_qt_thread
-def show_settings(checked=False):
+def show_settings(checked: bool = False, event_bus: EventBus | None = None):
     """Creates and shows the settings window."""
     global settings_window
+    if event_bus is None:
+        LOG.error("Cannot open settings window without an event bus.")
+        return
+
     if settings_window is None or not settings_window.isVisible():
-        settings_window = gui.SettingsWindow()
+        settings_window = SettingsWindow(event_bus)
         settings_window.show()
         settings_window.activateWindow()
     else:
         settings_window.activateWindow()
 
 @run_in_qt_thread
-def start_focus_mode(checked=False):
-    """Creates and shows the focus steps window."""
-    from src.actions import run_focus_steps
-    run_focus_steps(is_modal=True)
-
-@run_in_qt_thread
-def _show_modal_focus_window():
-    """Shows the focus window, ensuring it runs on the main Qt thread."""
-    from src.actions import run_focus_steps
-    LOG.info("Triggering modal focus mode.")
-    run_focus_steps(is_modal=True)
-
+def start_focus_mode(checked=False, event_bus: EventBus | None = None):
+    """Triggers focus mode via the event bus."""
+    if event_bus is None:
+        LOG.error("Cannot trigger focus mode without an event bus.")
+        return
+    LOG.info("Triggering focus mode from tray icon.")
+    event_bus.publish(FocusModeRequestedEvent())
 
 @run_in_qt_thread
 def check_for_updates(checked=False):
@@ -122,11 +103,9 @@ def quit_app(checked=False):
     QApplication.instance().quit()
 
 
-def setup_tray_icon(argv: list[str] | None = None, scheduler_instance: scheduler.PrayerScheduler = None, dry_run: bool = False):
+def setup_tray_icon(argv: list[str] | None = None, scheduler_instance: scheduler.PrayerScheduler = None, event_bus: EventBus | None = None, dry_run: bool = False):
     """
     Initializes the QApplication and the system tray icon.
-    This is now the main entry point for any GUI-related activity.
-    It handles argument parsing and decides the application's behavior.
     """
     app = QApplication.instance() or QApplication(sys.argv if argv is None else [sys.argv[0]] + argv)
     app.setQuitOnLastWindowClosed(False)
@@ -135,20 +114,17 @@ def setup_tray_icon(argv: list[str] | None = None, scheduler_instance: scheduler
         LOG.info("Dry run mode activated. Skipping GUI initialization.")
         if scheduler_instance:
             scheduler_instance.run()
-        return 0 # Return 0 for success in dry run mode, as there's no GUI event loop to run
+        return 0
 
-    # Initialize icons after QApplication is created.
     ICONS = {state: create_q_icon(BASE_ICON_PATH, state) for state in AppState}
 
-    # Create the tray icon and menu
     tray_icon = QSystemTrayIcon(ICONS[AppState.IDLE], app)
     tray_icon.setToolTip("Prayer Player")
     
     menu = QMenu()
     
-    # --- Menu Actions ---
-    settings_action = QAction("Settings...", triggered=show_settings)
-    focus_action = QAction("Start Focus Mode", triggered=start_focus_mode)
+    settings_action = QAction("Settings...", triggered=lambda: show_settings(event_bus=event_bus))
+    focus_action = QAction("Start Focus Mode", triggered=lambda: start_focus_mode(event_bus=event_bus))
     update_action = QAction("Check for Updates...", triggered=check_for_updates)
     quit_action = QAction("Quit", triggered=quit_app)
     
@@ -161,28 +137,27 @@ def setup_tray_icon(argv: list[str] | None = None, scheduler_instance: scheduler
     tray_icon.setContextMenu(menu)
     tray_icon.show()
 
-    # --- Background Threads ---
-    # This slot will run on the main GUI thread.
-    def on_state_update(state):
-        new_icon = ICONS.get(state, ICONS[AppState.IDLE])
+    # --- Event Handlers ---
+    @run_in_qt_thread
+    def on_state_update(event: ApplicationStateChangedEvent):
+        new_icon = ICONS.get(event.new_state, ICONS[AppState.IDLE])
         if new_icon:
             tray_icon.setIcon(new_icon)
 
-    # Start the icon updater thread
-    icon_updater = IconUpdater()
-    icon_updater.update_state_signal.connect(on_state_update)
-    
-    status_thread = threading.Thread(target=icon_updater.run, daemon=True)
-    status_thread.start()
+    @run_in_qt_thread
+    def on_schedule_refresh(event: ScheduleRefreshedEvent):
+        tray_icon.setToolTip(f"Prayer Player\nNext: {event.next_prayer_info}")
 
-    # Start the main prayer time scheduler loop, passing the calendar service
+    # --- Register Event Handlers ---
+    event_bus.register(ApplicationStateChangedEvent, on_state_update)
+    event_bus.register(ScheduleRefreshedEvent, on_schedule_refresh)
+
     if scheduler_instance:
         scheduler_instance.run()
 
-    # On first run, if config is missing, show settings
     current_config = load_config()
     if not current_config.city or not current_config.country:
         LOG.info("Configuration not found, showing settings window.")
-        show_settings()
+        show_settings(event_bus=event_bus)
 
     return app.exec()

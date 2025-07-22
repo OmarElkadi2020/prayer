@@ -12,10 +12,14 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Signal, QObject
 
-from src.config.security import load_config, save_config, adhan_path, LOG
+from src.config.security import load_config, adhan_path, LOG
 from src.auth import google_auth
+from src.shared.event_bus import EventBus
 from src.platform.service import ServiceManager
-from src.actions import play
+from src.shared.audio_player import play
+from src.domain.notification_messages import FocusModeRequestedEvent
+from src.focus_steps_view import FocusStepsView
+from src.presenter.focus_steps_presenter import FocusStepsPresenter
 
 class Worker(QObject):
     """Worker object for running tasks in a separate thread."""
@@ -25,6 +29,7 @@ class Worker(QObject):
     cities_loaded = Signal(list, str)
     status_updated = Signal(str, str)
     google_auth_finished = Signal(object) # Pass credentials object
+    prompt_for_auth = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -70,38 +75,34 @@ class Worker(QObject):
                 self.status_updated.emit("Google authentication successful!", "green")
         except google_auth.CredentialsNotFoundError as e:
             self.status_updated.emit(f"Google authentication failed: {e}", "red")
-            # Prompt user to authenticate if token.json is missing
-            reply = QMessageBox.question(
-                self,
-                "Calendar Integration",
-                "Google Calendar integration is not set up. This feature allows the app to automatically "
-                "block out prayer times in your Google Calendar, helping you reserve that time and "
-                "preventing meeting conflicts.\n\nWould you like to set it up now?",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No,
-            )
-            if reply == QMessageBox.Yes:
-                self.authenticate_google_calendar(reauthenticate=True)
-            else:
-                self.error.emit(str(e))
+            self.prompt_for_auth.emit()
         except Exception as e:
             self.status_updated.emit(f"Google authentication failed: {e}", "red")
             self.error.emit(f"Failed to authenticate Google Calendar: {e}")
         self.finished.emit()
 
 class SettingsWindow(QWidget):
-    def __init__(self):
+    def __init__(self, event_bus: EventBus):
         super().__init__()
+        self.event_bus = event_bus
         self.setWindowTitle("Prayer Player Settings")
-        self.setMinimumSize(550, 500)
+        self.setMinimumSize(550, 650)
         self.countries = []
         self.cities = []
         self.service_manager = ServiceManager("prayer-player", "Prayer Player", "A service to play prayer times.")
         self.calendar_service = None
+
+        # Initialize FocusStepsView and Presenter
+        self.focus_presenter = FocusStepsPresenter()
+        self.focus_view = FocusStepsView(self.focus_presenter, disable_sound=True)
+
         self.init_ui()
         self.load_initial_config()
         self.load_countries()
         self.check_initial_auth_status()
+
+        # Register event handler for focus mode
+        self.event_bus.register(FocusModeRequestedEvent, self._handle_focus_mode_request)
 
     def init_ui(self):
         main_layout = QVBoxLayout(self)
@@ -208,6 +209,7 @@ class SettingsWindow(QWidget):
 
     def init_notifications_tab(self):
         layout = QGridLayout(self.notifications_tab)
+        layout.setContentsMargins(10, 10, 10, 10)
         layout.addWidget(QLabel("Play Adhan for:"), 0, 0, 1, 2)
         self.prayer_checkboxes = {}
         prayers = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"]
@@ -226,7 +228,24 @@ class SettingsWindow(QWidget):
         
         self.custom_audio_label = QLabel("Using default adhan sound.")
         layout.addWidget(self.custom_audio_label, len(prayers) + 2, 0, 1, 2)
-        layout.setRowStretch(len(prayers) + 3, 1)
+
+        # --- Simulate Prayer Section ---
+        simulate_line = QFrame()
+        simulate_line.setFrameShape(QFrame.HLine)
+        simulate_line.setFrameShadow(QFrame.Sunken)
+        layout.addWidget(simulate_line, len(prayers) + 3, 0, 1, 2)
+
+        layout.addWidget(QLabel("<b>Simulate Prayer</b>"), len(prayers) + 4, 0, 1, 2)
+        
+        self.simulate_prayer_combo = QComboBox()
+        self.simulate_prayer_combo.addItems(prayers)
+        layout.addWidget(self.simulate_prayer_combo, len(prayers) + 5, 0)
+
+        self.simulate_prayer_button = QPushButton("Simulate Selected Prayer")
+        self.simulate_prayer_button.clicked.connect(self._on_simulate_prayer_clicked)
+        layout.addWidget(self.simulate_prayer_button, len(prayers) + 5, 1)
+
+        layout.setRowStretch(len(prayers) + 6, 1)
 
     def init_about_tab(self):
         layout = QGridLayout(self.about_tab)
@@ -299,6 +318,15 @@ class SettingsWindow(QWidget):
         else:
             self.update_status("Audio file not found.", "red")
 
+    def _on_simulate_prayer_clicked(self):
+        selected_prayer = self.simulate_prayer_combo.currentText()
+        if selected_prayer:
+            self.update_status(f"Simulating {selected_prayer} prayer...", "blue")
+            from src.shared.commands import SimulatePrayerCommand
+            self.event_bus.dispatch(SimulatePrayerCommand(prayer_name=selected_prayer))
+        else:
+            self.update_status("Please select a prayer to simulate.", "red")
+
     def update_status(self, message: str, color: str = "blue"):
         self.status_label.setText(message)
         self.status_label.setStyleSheet(f"color: {color};")
@@ -341,7 +369,9 @@ class SettingsWindow(QWidget):
             return
             
         try:
-            save_config(current_config)
+            from src.domain.config_messages import SaveConfigurationCommand
+            self.event_bus.dispatch(SaveConfigurationCommand(config=current_config))
+
             LOG.setLevel(current_config.log_level)
             self.update_status("Configuration saved successfully!", "green")
             
@@ -352,10 +382,6 @@ class SettingsWindow(QWidget):
                 else:
                     self.service_manager.disable()
                     self.service_manager.uninstall()
-            
-            # Re-initialize and refresh the scheduler with the new config
-            # This is a bit of a hack, but it's the simplest way to re-trigger the main logic
-            # In a more advanced app, we might have a dedicated refresh signal/slot mechanism
             
             self.close()
         except Exception as e:
@@ -406,7 +432,23 @@ class SettingsWindow(QWidget):
         self.worker.google_auth_finished.connect(self.on_google_auth_finished)
         self.worker.status_updated.connect(self.update_status)
         self.worker.error.connect(lambda msg: QMessageBox.critical(self, "Authentication Error", msg))
+        self.worker.prompt_for_auth.connect(self.handle_google_auth_prompt)
         self.thread.start()
+
+    def handle_google_auth_prompt(self):
+        reply = QMessageBox.question(
+            self,
+            "Calendar Integration",
+            "Google Calendar integration is not set up. This feature allows the app to automatically "
+            "block out prayer times in your Google Calendar, helping you reserve that time and "
+            "preventing meeting conflicts.\n\nWould you like to set it up now?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if reply == QMessageBox.Yes:
+            self.run_google_auth(reauthenticate=True)
+        else:
+            self.update_status("Google authentication setup declined.", "red")
 
     def on_google_auth_finished(self, creds):
         if not creds:
@@ -434,11 +476,26 @@ class SettingsWindow(QWidget):
             if index != -1:
                 self.calendar_combo.setCurrentIndex(index)
 
+    def _handle_focus_mode_request(self, event: FocusModeRequestedEvent):
+        LOG.info("Received FocusModeRequestedEvent. Showing FocusStepsView.")
+        # Ensure the view is shown on the Qt thread
+        self.focus_view.show()
+        self.focus_view.activateWindow()
+
 def main(app: QApplication | None = None):
     if app is None:
         app = QApplication.instance() or QApplication(sys.argv)
     
-    gui = SettingsWindow()
+    # For standalone execution, we need to set up a minimal event system.
+    from src.shared.event_bus import EventBus
+    from src.services.config_service import ConfigService
+    from src.domain.config_messages import SaveConfigurationCommand
+
+    event_bus = EventBus()
+    config_service = ConfigService(event_bus)
+    event_bus.register(SaveConfigurationCommand, config_service.handle_save_command)
+
+    gui = SettingsWindow(event_bus)
     gui.show()
     
     if app.exec() != 0:
