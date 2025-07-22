@@ -5,10 +5,11 @@ import subprocess
 import shutil
 import argparse
 
+from src.__version__ import __version__ as VERSION
+
 # --- Configuration ---
 APP_NAME = "PrayerPlayer"
 PACKAGE_NAME = "prayer-player"
-VERSION = "1.0.1"  # This should be sourced from a single place, e.g., src/__version__.py
 ENTRY_POINT = "src/__main__.py"
 ICON_PATH = "src/assets/mosque.png"
 DEB_STAGING_DIR = f"{PACKAGE_NAME}-deb-staging"
