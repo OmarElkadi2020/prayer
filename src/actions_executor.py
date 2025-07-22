@@ -1,7 +1,8 @@
 from __future__ import annotations
 from typing import Protocol
 from src.config.security import LOG
-from src.actions import play, trigger_focus_mode
+from src.shared.event_bus import EventBus
+from src.domain.notification_messages import AudioPlaybackRequestedEvent, FocusModeRequestedEvent
 import threading
 
 class ActionExecutor(Protocol):
@@ -20,15 +21,18 @@ class ActionExecutor(Protocol):
 
 class DefaultActionExecutor:
     """
-    The default implementation of ActionExecutor that interacts with the system.
+    The default implementation of ActionExecutor. It publishes events to request actions.
     """
+    def __init__(self, event_bus: EventBus):
+        self._event_bus = event_bus
+
     def play_audio(self, audio_path: str):
-        LOG.info(f"DefaultActionExecutor: Playing audio from {audio_path}")
-        play(audio_path)
+        LOG.info(f"DefaultActionExecutor: Requesting audio playback for {audio_path}")
+        self._event_bus.publish(AudioPlaybackRequestedEvent(audio_path=audio_path))
 
     def trigger_focus_mode(self):
-        LOG.info("DefaultActionExecutor: Triggering focus mode.")
-        trigger_focus_mode()
+        LOG.info("DefaultActionExecutor: Requesting focus mode.")
+        self._event_bus.publish(FocusModeRequestedEvent())
 
     def set_dry_run_event(self, event: threading.Event):
         # The default executor doesn't need to handle this event.

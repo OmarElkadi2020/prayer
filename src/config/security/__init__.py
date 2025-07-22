@@ -20,7 +20,7 @@ def get_asset_path(filename):
     Returns a path-like object for an asset in the 'prayer.assets' package.
     This works for both development and PyInstaller-packaged modes.
     """
-    return resources.files('assets').joinpath(filename)
+    return resources.files('src.assets').joinpath(filename)
 
 # --- Default Paths ---
 DEFAULT_ADHAN_PATH = get_asset_path('adhan.wav')

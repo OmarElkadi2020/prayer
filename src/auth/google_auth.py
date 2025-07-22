@@ -49,7 +49,7 @@ def get_google_credentials(reauthenticate=False):
                 if os.path.exists(SYSTEM_CONFIG_PATH):
                     config_path = SYSTEM_CONFIG_PATH
                 # 2. Check PyInstaller temporary extraction path (for bundled applications)
-                elif sys.frozen and hasattr(sys, '_MEIPASS'):
+                elif getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
                     pyinstaller_path = os.path.join(sys._MEIPASS, 'config', 'security', 'google_client_config.json')
                     if os.path.exists(pyinstaller_path):
                         config_path = pyinstaller_path
