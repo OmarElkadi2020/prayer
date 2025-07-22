@@ -1,15 +1,8 @@
 import unittest
 from unittest.mock import Mock, patch
-from PySide6.QtMultimedia import QSoundEffect
-from PySide6.QtCore import QUrl
-from PySide6.QtWidgets import QApplication
 
 from src.gui.notification_service import NotificationService
 from src.domain.notification_messages import AudioPlaybackRequestedEvent, FocusModeRequestedEvent
-from src.focus_steps_view import FocusStepsView
-from src.presenter.focus_steps_presenter import FocusStepsPresenter
-from src.shared.audio_player import play
-from src.focus_steps_view import run as run_focus_steps_window
 
 class TestNotificationService(unittest.TestCase):
 

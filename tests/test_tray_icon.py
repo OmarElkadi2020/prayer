@@ -1,14 +1,9 @@
 import unittest
-from unittest.mock import Mock, patch, MagicMock
-from PySide6.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QMessageBox
-from PySide6.QtGui import QIcon, QAction, QPixmap
-from PySide6.QtCore import Qt
+from unittest.mock import patch, MagicMock
+from PySide6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 
-from src.tray_icon import setup_tray_icon, create_q_icon, show_settings, start_focus_mode, check_for_updates, quit_app
+from src.tray_icon import setup_tray_icon
 from src.shared.event_bus import EventBus
-from src.domain.enums import AppState
-from src.domain.scheduler_messages import ApplicationStateChangedEvent, ScheduleRefreshedEvent
-from src.config.security import load_config
 
 class TestTrayIcon(unittest.TestCase):
 
@@ -31,13 +26,13 @@ class TestTrayIcon(unittest.TestCase):
         self.mock_load_config.return_value.city = "TestCity"
         self.mock_load_config.return_value.country = "TestCountry"
 
-        # Mock gui.SettingsWindow to prevent actual GUI creation
-        self.patcher_settings_window = patch('src.tray_icon.gui.SettingsWindow')
+        # Mock SettingsWindow to prevent actual GUI creation
+        self.patcher_settings_window = patch('src.gui.settings_window.SettingsWindow')
         self.mock_settings_window_cls = self.patcher_settings_window.start()
 
-        # Mock src.actions.run_focus_steps
-        self.patcher_run_focus_steps = patch('src.tray_icon.start_focus_mode')
-        self.mock_run_focus_steps = self.patcher_run_focus_steps.start()
+        # Mock start_focus_mode (which now dispatches an event)
+        self.patcher_start_focus_mode = patch('src.tray_icon.start_focus_mode')
+        self.mock_start_focus_mode = self.patcher_start_focus_mode.start()
 
         # Mock QMessageBox for check_for_updates
         self.patcher_qmessagebox_info = patch('src.tray_icon.QMessageBox.information')
@@ -54,7 +49,7 @@ class TestTrayIcon(unittest.TestCase):
         self.patcher_menu.stop()
         self.patcher_load_config.stop()
         self.patcher_settings_window.stop()
-        self.patcher_run_focus_steps.stop()
+        self.patcher_start_focus_mode.stop()
         self.patcher_qmessagebox_info.stop()
         self.patcher_qapp_quit.stop()
         self.app.quit()

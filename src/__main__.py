@@ -8,12 +8,11 @@ import sys
 from src.config.security import get_asset_path, load_config, LOG, parse_args
 from src.scheduler import PrayerScheduler
 from src.prayer_times import today_times
-from src.prayer_times import today_times
 from src.auth.google_auth import get_google_credentials
 from src.calendar_api.google_calendar import GoogleCalendarService
 from src.shared.event_bus import EventBus
 from src.services.config_service import ConfigService
-from src.gui.notification_service import NotificationService
+
 from src.domain.config_messages import SaveConfigurationCommand
 
 def duaa_path():
@@ -70,7 +69,6 @@ def main(argv: list[str] | None = None) -> int:
 
     # --- Service Initialization ---
     config_service = ConfigService(event_bus)
-    notification_service = NotificationService(event_bus)
     
     # --- Register Handlers ---
     event_bus.register(SaveConfigurationCommand, config_service.handle_save_command)

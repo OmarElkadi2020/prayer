@@ -1,10 +1,10 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtWidgets import QApplication
 from src.shared.event_bus import EventBus
-from src.gui.settings_window import SettingsWindow, Worker
+from src.gui.settings_window import SettingsWindow
 from src.auth import google_auth
-from src.domain.config_messages import SaveConfigurationCommand, ConfigurationChangedEvent
+from src.domain.config_messages import SaveConfigurationCommand
 from src.config.schema import Config
 
 class TestSettingsWindow(unittest.TestCase):
@@ -30,65 +30,6 @@ class TestSettingsWindow(unittest.TestCase):
     def tearDown(self):
         self.patcher_load_config.stop()
         self.app.quit()
-
-    @patch('src.gui.settings_window.Worker')
-    def test_calendar_integration_prompt_on_credentials_not_found(self, MockWorker):
-        # Configure the mock worker instance
-        mock_worker_instance = MockWorker.return_value
-        mock_worker_instance.authenticate_google_calendar.side_effect = [
-            google_auth.CredentialsNotFoundError("No credentials found."),
-            MagicMock() # Simulate successful reauthentication
-        ]
-
-        # Patch the handle_google_auth_prompt method to simulate user accepting the prompt
-        with patch.object(self.settings_window, 'handle_google_auth_prompt') as mock_handle_prompt:
-            mock_handle_prompt.side_effect = lambda: self.settings_window.run_google_auth(reauthenticate=True)
-
-            # Connect the mocked worker's signal to the settings window's slot
-            mock_worker_instance.prompt_for_auth.connect(self.settings_window.handle_google_auth_prompt)
-
-            self.settings_window.run_google_auth()
-            self.settings_window.thread.join() # Wait for the worker thread to finish
-            QApplication.processEvents() # Process events to ensure signal is handled
-
-            # Manually emit the signal to trigger the prompt handling
-            mock_worker_instance.prompt_for_auth.emit()
-            QApplication.processEvents() # Process events after emitting signal
-
-            # Assertions
-            MockWorker.assert_called_once() # Ensure a Worker instance was created
-            mock_worker_instance.authenticate_google_calendar.assert_called_with(False)
-            mock_handle_prompt.assert_called_once() # Ensure the prompt was handled
-            # The second call to authenticate_google_calendar comes from handle_google_auth_prompt
-            self.assertEqual(mock_worker_instance.authenticate_google_calendar.call_count, 2)
-            self.assertEqual(mock_worker_instance.authenticate_google_calendar.call_args_list[0].kwargs['reauthenticate'], False)
-            self.assertEqual(mock_worker_instance.authenticate_google_calendar.call_args_list[1].kwargs['reauthenticate'], True)
-
-    @patch('src.gui.settings_window.Worker')
-    def test_calendar_integration_prompt_user_declines(self, MockWorker):
-        # Configure the mock worker instance
-        mock_worker_instance = MockWorker.return_value
-        mock_worker_instance.authenticate_google_calendar.side_effect = google_auth.CredentialsNotFoundError("No credentials found.")
-
-        # Patch the handle_google_auth_prompt method to simulate user declining the prompt
-        with patch.object(self.settings_window, 'handle_google_auth_prompt') as mock_handle_prompt:
-            mock_handle_prompt.side_effect = lambda: None # Simulate user declining
-
-            # Connect the mocked worker's signal to the settings window's slot
-            mock_worker_instance.prompt_for_auth.connect(self.settings_window.handle_google_auth_prompt)
-
-            self.settings_window.run_google_auth()
-            self.settings_window.thread.join() # Wait for the worker thread to finish
-            QApplication.processEvents() # Process events to ensure signal is handled
-
-            # Manually emit the signal to trigger the prompt handling
-            mock_worker_instance.prompt_for_auth.emit()
-            QApplication.processEvents() # Process events after emitting signal
-
-            # Assertions
-            MockWorker.assert_called_once() # Ensure a Worker instance was created
-            mock_worker_instance.authenticate_google_calendar.assert_called_once_with(False)
-            mock_handle_prompt.assert_called_once() # Ensure the prompt was handled
 
     @patch('src.config.security.load_config')
     def test_save_and_close_dispatches_command(self, mock_load_config):

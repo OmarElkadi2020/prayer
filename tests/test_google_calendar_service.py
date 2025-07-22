@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import Mock, patch
-from datetime import datetime, timedelta
+from datetime import datetime
 from zoneinfo import ZoneInfo
 from src.calendar_api.google_calendar import GoogleCalendarService
 

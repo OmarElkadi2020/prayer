@@ -9,12 +9,13 @@ from PIL import Image, ImageDraw
 from PIL.ImageQt import ImageQt
 
 from src.config.security import load_config, LOG
-from src import gui, scheduler
+from src.gui.settings_window import SettingsWindow
+from src import scheduler
 from src.qt_utils import run_in_qt_thread
 from src.shared.event_bus import EventBus
 from src.domain.enums import AppState
-from src.domain.notification_messages import FocusModeRequestedEvent
 from src.domain.scheduler_messages import ApplicationStateChangedEvent, ScheduleRefreshedEvent
+from src.domain.notification_messages import FocusModeRequestedEvent
 
 # Globals
 settings_window = None
@@ -75,17 +76,20 @@ def show_settings(checked: bool = False, event_bus: EventBus | None = None):
         return
 
     if settings_window is None or not settings_window.isVisible():
-        settings_window = gui.SettingsWindow(event_bus)
+        settings_window = SettingsWindow(event_bus)
         settings_window.show()
         settings_window.activateWindow()
     else:
         settings_window.activateWindow()
 
 @run_in_qt_thread
-def start_focus_mode(checked=False):
-    """Creates and shows the focus steps window."""
-    from src.actions import run_focus_steps
-    run_focus_steps(is_modal=True)
+def start_focus_mode(checked=False, event_bus: EventBus | None = None):
+    """Triggers focus mode via the event bus."""
+    if event_bus is None:
+        LOG.error("Cannot trigger focus mode without an event bus.")
+        return
+    LOG.info("Triggering focus mode from tray icon.")
+    event_bus.publish(FocusModeRequestedEvent())
 
 @run_in_qt_thread
 def check_for_updates(checked=False):
@@ -120,7 +124,7 @@ def setup_tray_icon(argv: list[str] | None = None, scheduler_instance: scheduler
     menu = QMenu()
     
     settings_action = QAction("Settings...", triggered=lambda: show_settings(event_bus=event_bus))
-    focus_action = QAction("Start Focus Mode", triggered=start_focus_mode)
+    focus_action = QAction("Start Focus Mode", triggered=lambda: start_focus_mode(event_bus=event_bus))
     update_action = QAction("Check for Updates...", triggered=check_for_updates)
     quit_action = QAction("Quit", triggered=quit_app)
     

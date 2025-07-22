@@ -12,12 +12,11 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Signal, QObject
 
-from src.config.security import load_config, save_config, adhan_path, LOG
+from src.config.security import load_config, adhan_path, LOG
 from src.auth import google_auth
 from src.shared.event_bus import EventBus
 from src.platform.service import ServiceManager
 from src.shared.audio_player import play
-from src.shared.commands import SimulatePrayerCommand
 from src.domain.notification_messages import FocusModeRequestedEvent
 from src.focus_steps_view import FocusStepsView
 from src.presenter.focus_steps_presenter import FocusStepsPresenter
