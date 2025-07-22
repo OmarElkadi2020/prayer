@@ -70,6 +70,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libegl1 libpulse0 libxcb-cursor0 libasound2-dev alsa-utils libqt6gui6 libqt6widgets6
 
+      - name: List dist directory before packaging (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          echo "Listing contents of dist/ before packaging:"
+          Get-ChildItem dist -Recurse || true
+
       - name: Build application
         run: python build.py --release --google-client-config '${{ secrets.GOOGLE_CLIENT_CONFIG }}'
 

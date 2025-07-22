@@ -2,15 +2,15 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "PrayerPlayer"
-#define MyAppVersion "1.0.0" ; IMPORTANT: This should ideally be dynamically updated from src/__version__.py
+#define MyAppVersion "1.0.1"
 #define MyAppPublisher "Omar"
 #define MyAppURL "https://github.com/yourusername/prayer" ; Replace with actual URL
 #define MyAppExeName "PrayerPlayer.exe"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId for another application.
-; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
-AppId={{A_NEW_GUID_HERE}} ; IMPORTANT: Replace this with a unique GUID for your application!
+; (To generate a new GUID, click Tools | Generate GUID inside the IDE, or use an online GUID generator.)
+AppId={{YOUR_UNIQUE_GUID_HERE}} ; IMPORTANT: Replace this with a unique GUID for your application!
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}

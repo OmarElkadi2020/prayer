@@ -177,7 +177,12 @@ def package_iss():
     """Create a .exe installer using Inno Setup."""
     print("--- Creating Windows installer ---")
     subprocess.run(["choco", "install", "innosetup", "--no-progress"], check=True)
-    subprocess.run(["iscc", "deployment/windows/setup.iss"], check=True)
+    result = subprocess.run(["iscc", "deployment/windows/setup.iss"], capture_output=True, text=True)
+    print("Inno Setup STDOUT:")
+    print(result.stdout)
+    print("Inno Setup STDERR:")
+    print(result.stderr)
+    result.check_returncode() # This will raise an exception if the command failed
     print("Windows installer created.")
 
 
