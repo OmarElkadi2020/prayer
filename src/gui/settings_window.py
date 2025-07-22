@@ -84,7 +84,7 @@ class SettingsWindow(QWidget):
         super().__init__()
         self.event_bus = event_bus
         self.setWindowTitle("Prayer Player Settings")
-        self.setMinimumSize(550, 500)
+        self.setMinimumSize(550, 650)
         self.countries = []
         self.cities = []
         self.service_manager = ServiceManager("prayer-player", "Prayer Player", "A service to play prayer times.")
@@ -199,6 +199,7 @@ class SettingsWindow(QWidget):
 
     def init_notifications_tab(self):
         layout = QGridLayout(self.notifications_tab)
+        layout.setContentsMargins(10, 10, 10, 10)
         layout.addWidget(QLabel("Play Adhan for:"), 0, 0, 1, 2)
         self.prayer_checkboxes = {}
         prayers = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"]
