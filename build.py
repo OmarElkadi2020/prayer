@@ -76,7 +76,6 @@ def build_executable():
             "--hidden-import", "src.config",
             "--hidden-import", "src.platform",
             "--hidden-import", "src.gui",
-            "--hidden-import", "src.state",
             "--hidden-import", "src.tray_icon",
         ])
         if sys.platform == "win32":
