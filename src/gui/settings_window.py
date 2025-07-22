@@ -18,6 +18,9 @@ from src.shared.event_bus import EventBus
 from src.platform.service import ServiceManager
 from src.shared.audio_player import play
 from src.shared.commands import SimulatePrayerCommand
+from src.domain.notification_messages import FocusModeRequestedEvent
+from src.focus_steps_view import FocusStepsView
+from src.presenter.focus_steps_presenter import FocusStepsPresenter
 
 class Worker(QObject):
     """Worker object for running tasks in a separate thread."""
@@ -89,10 +92,18 @@ class SettingsWindow(QWidget):
         self.cities = []
         self.service_manager = ServiceManager("prayer-player", "Prayer Player", "A service to play prayer times.")
         self.calendar_service = None
+
+        # Initialize FocusStepsView and Presenter
+        self.focus_presenter = FocusStepsPresenter()
+        self.focus_view = FocusStepsView(self.focus_presenter, disable_sound=True)
+
         self.init_ui()
         self.load_initial_config()
         self.load_countries()
         self.check_initial_auth_status()
+
+        # Register event handler for focus mode
+        self.event_bus.register(FocusModeRequestedEvent, self._handle_focus_mode_request)
 
     def init_ui(self):
         main_layout = QVBoxLayout(self)
@@ -465,6 +476,12 @@ class SettingsWindow(QWidget):
             index = self.calendar_combo.findData(current_config.google_calendar_id)
             if index != -1:
                 self.calendar_combo.setCurrentIndex(index)
+
+    def _handle_focus_mode_request(self, event: FocusModeRequestedEvent):
+        LOG.info("Received FocusModeRequestedEvent. Showing FocusStepsView.")
+        # Ensure the view is shown on the Qt thread
+        self.focus_view.show()
+        self.focus_view.activateWindow()
 
 def main(app: QApplication | None = None):
     if app is None:
