@@ -141,7 +141,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            prayer-player-macos.dmg
-            prayer-player-ubuntu.deb
-            prayer-player-windows.exe
+            dist/prayer-player-macos.dmg
+            dist/prayer-player-ubuntu.deb
+            dist/prayer-player-windows.exe
           fail_on_unmatched_files: true
