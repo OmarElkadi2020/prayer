@@ -144,7 +144,7 @@ jobs:
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: dist/prayer-player-ubuntu.deb/prayer-player*.deb
+          asset_path: dist/prayer-player-ubuntu.deb
           asset_name: PrayerPlayer-Ubuntu.deb
           asset_content_type: application/vnd.debian.binary-package
 
