@@ -32,13 +32,7 @@ WizardStyle=modern
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-Source: "dist\PrayerPlayer\{#MyAppExeName}"
-DestDir: "{app}"
-Flags: ignoreversion
-Source: "dist\PrayerPlayer\*"
-DestDir: "{app}"
-Flags: ignoreversion recursesubdirs createallsubdirs
-; NOTE: Don't use "Flags: ignoreversion" on any files that have actual version info.
+Source: "..\..\dist\PrayerPlayer\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
