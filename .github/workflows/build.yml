@@ -42,15 +42,15 @@ jobs:
         include:
           - os: ubuntu-22.04
             python-version: '3.10'
-            asset_name: prayer-player-ubuntu.deb
-            asset_path: dist/*.deb
+            asset_name: prayer-player-ubuntu
+            asset_path: dist/PrayerPlayerSetup.deb
           - os: macos-latest
             python-version: '3.10'
-            asset_name: prayer-player-macos.dmg
-            asset_path: dist/*.dmg
+            asset_name: prayer-player-macos
+            asset_path: dist/PrayerPlayerSetup.dmg
           - os: windows-latest
             python-version: '3.10'
-            asset_name: prayer-player-windows.exe
+            asset_name: prayer-player-windows
             asset_path: dist/PrayerPlayerSetup.exe
 
     runs-on: ${{ matrix.os }}
@@ -141,7 +141,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/prayer-player-macos.dmg
-            dist/prayer-player-ubuntu.deb
-            dist/prayer-player-windows.exe
+            dist/prayer-player-macos/PrayerPlayer.dmg
+            prayer-player_1.0.1_amd64/prayer-player_1.0.1_amd64.deb
+            dist/prayer-player-windows/PrayerPlayerSetup.exe
           fail_on_unmatched_files: true
