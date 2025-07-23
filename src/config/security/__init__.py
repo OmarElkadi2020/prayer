@@ -18,17 +18,19 @@ from logging.handlers import RotatingFileHandler
 
 def get_asset_path(filename):
     """
-    Returns a path-like object for an asset in the 'prayer.assets' package.
-    This works for both development and PyInstaller-packaged modes.
+    Get the path to an asset file, handling both development and PyInstaller-packaged modes.
     """
-    return resources.files('src.assets').joinpath(filename)
+    # PyInstaller creates a temp folder and stores path in _MEIPASS
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, 'assets', filename)
+
+    return str(resources.files('src.assets').joinpath(filename))
 
 # --- Default Paths ---
 DEFAULT_ADHAN_PATH = get_asset_path('adhan.wav')
 
 def adhan_path():
-    with resources.path('assets', 'adhan.wav') as p:
-        return str(p)
+    return get_asset_path('adhan.wav')
 
 TZ           = ZoneInfo("Europe/Berlin")
 TARGET_EMAIL = "omar.elkadi@cybus.io"
