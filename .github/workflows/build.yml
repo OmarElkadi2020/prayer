@@ -142,6 +142,6 @@ jobs:
         with:
           files: |
             dist/prayer-player-macos/PrayerPlayer.dmg
-            prayer-player_1.0.1_amd64/prayer-player_1.0.1_amd64.deb
+            dist/prayer-player_1.0.1_amd64/PrayerPlayer.deb
             dist/prayer-player-windows/PrayerPlayerSetup.exe
           fail_on_unmatched_files: true
