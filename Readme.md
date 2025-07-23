@@ -1,6 +1,4 @@
-[![Build Status](https://github.com/Omar-Elawady/prayer-player/actions/workflows/build.yml/badge.svg)](https://github.com/OmarElkadi2020/prayer/actions/workflows/build.yml)
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/Omar-Elawady/prayer-player)](https://github.com/Omar-Elawady/prayer-player/releases/latest)
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Build and Release Prayer Player](https://github.com/OmarElkadi2020/prayer/actions/workflows/build.yml/badge.svg)](https://github.com/OmarElkadi2020/prayer/actions/workflows/build.yml)
 
 # Prayer Player
 
