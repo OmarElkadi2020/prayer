@@ -42,8 +42,8 @@ jobs:
         include:
           - os: ubuntu-22.04
             python-version: '3.10'
-            asset_name: prayer-player_1.0.1_amd64
-            asset_path: dist/PrayerPlayer.deb
+            asset_name: prayer-player-ubuntu
+            asset_path: dist/*.deb
           - os: macos-latest
             python-version: '3.10'
             asset_name: prayer-player-macos
@@ -142,6 +142,6 @@ jobs:
         with:
           files: |
             dist/prayer-player-macos/PrayerPlayer.dmg
-            dist/prayer-player_1.0.1_amd64/PrayerPlayer.deb
+            dist/prayer-player-ubuntu/prayer-player_1.0.1_amd64.deb
             dist/prayer-player-windows/PrayerPlayerSetup.exe
           fail_on_unmatched_files: true
