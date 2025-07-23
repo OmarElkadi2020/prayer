@@ -117,66 +117,31 @@ jobs:
           name: ${{ matrix.asset_name }}
           path: ${{ matrix.asset_path }}
 
-  create-release:
+  release:
+    name: 🚀 Create Release
     needs: build-and-package
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write # Required to create a release and upload assets
     steps:
-      - name: Download all artifacts
+      - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
-          path: dist
+          path: dist # Artifacts will be downloaded into subdirectories (e.g., dist/prayer-player-ubuntu/)
 
-      - name: Check if release already exists
-        id: check_release
-        run: |
-          set +e # Don't exit on error
-          RELEASE_EXISTS=$(curl -s -o /dev/null -w "%{\nhttp_code}" \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ github.ref }}" \
-            || echo "404") # Default to 404 if curl fails
-          echo "Release check HTTP code: $RELEASE_EXISTS"
-          if [ "$RELEASE_EXISTS" == "200" ]; then
-            echo "release_exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "release_exists=false" >> $GITHUB_OUTPUT
-          fi
-        shell: bash
+      - name: Display structure of downloaded files
+        # This step helps in debugging by showing the exact file structure before release.
+        run: ls -R dist
 
-      - name: Create Release
-        id: create_release
-        if: steps.check_release.outputs.release_exists == 'false'
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create GitHub Release and Upload Assets
+        # This single action creates the release and uploads all matching files.
+        # It handles the logic of finding the files within the directories
+        # created by download-artifact, which fixes the 'EISDIR' error.
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-
-      - name: Upload Release Asset (Ubuntu)
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: dist/prayer-player-ubuntu.deb
-          asset_name: PrayerPlayer-Ubuntu.deb
-          asset_content_type: application/vnd.debian.binary-package
-
-      - name: Upload Release Asset (macOS)
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: dist/prayer-player-macos.dmg/PrayerPlayer.dmg
-          asset_name: PrayerPlayer-macOS.dmg
-          asset_content_type: application/octet-stream
-
-      - name: Upload Release Asset (Windows)
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: dist/prayer-player-windows.exe
-          asset_name: PrayerPlayerSetup-Windows.exe
-          asset_content_type: application/vnd.microsoft.portable-executable
+          files: |
+            dist/prayer-player-ubuntu/*.deb
+            dist/prayer-player-macos/*.dmg
+            dist/prayer-player-windows/*.exe
+          fail_on_unmatched_files: true
