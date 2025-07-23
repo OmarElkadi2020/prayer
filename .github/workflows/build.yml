@@ -1,0 +1,163 @@
+name: Build and Release Prayer Player
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-and-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Lint with ruff
+        run: ruff check .
+
+      
+
+  build-and-package:
+    needs: test-and-lint
+    environment: dry_run
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            python-version: '3.10'
+            asset_name: prayer-player-ubuntu.deb
+            asset_path: dist/*.deb
+          - os: macos-latest
+            python-version: '3.10'
+            asset_name: prayer-player-macos.dmg
+            asset_path: dist/*.dmg
+          - os: windows-latest
+            python-version: '3.10'
+            asset_name: prayer-player-windows.exe
+            asset_path: dist/PrayerPlayerSetup.exe
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Linux GUI dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libpulse0 libxcb-cursor0 libasound2-dev alsa-utils libqt6gui6 libqt6widgets6
+
+      - name: List dist directory before packaging (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          echo "Listing contents of dist/ before packaging:"
+          Get-ChildItem dist -Recurse || true
+
+      - name: Build application
+        run: python build.py --release --google-client-config '${{ secrets.GOOGLE_CLIENT_CONFIG }}'
+
+      
+
+      - name: Dry run built application (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          # Install xvfb for headless GUI testing
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          # Run the application in a virtual display with dry run arguments
+          dist/PrayerPlayer --dry-run --country "Germany" --city "Deggendorf" || true
+
+      - name: Dry run built application (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          # Run the application directly with dry run arguments
+          dist/PrayerPlayer.app/Contents/MacOS/PrayerPlayer --dry-run --country "Germany" --city "Deggendorf" || true
+
+      - name: Debug Windows Build Artifacts
+        if: runner.os == 'Windows'
+        run: |
+          echo "Listing contents of dist/PrayerPlayer:"
+          Get-ChildItem dist/PrayerPlayer -Recurse
+          echo ""
+          echo "Contents of src/config/security/google_client_config.json:"
+          Get-Content src/config/security/google_client_config.json || true
+
+      - name: Dry run built application (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          # Run the application directly with dry run arguments
+          & .\dist\PrayerPlayer\PrayerPlayer.exe --dry-run --country "Germany" --city "Deggendorf" || true
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: ${{ matrix.asset_path }}
+
+  create-release:
+    needs: build-and-package
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: dist
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset (Ubuntu)
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: dist/prayer-player-ubuntu.deb/prayer-player*.deb
+          asset_name: prayer-player-ubuntu.deb
+          asset_content_type: application/vnd.debian.binary-package
+
+      - name: Upload Release Asset (macOS)
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: dist/prayer-player-macos.dmg/PrayerPlayer.dmg
+          asset_name: prayer-player-macos.dmg
+          asset_content_type: application/octet-stream
+
+      - name: Upload Release Asset (Windows)
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: dist/prayer-player-windows.exe/PrayerPlayerSetup.exe
+          asset_name: prayer-player-windows.exe
+          asset_content_type: application/vnd.microsoft.portable-executable
