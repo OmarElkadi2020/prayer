@@ -21,9 +21,9 @@ DefaultDirName={autopf}\{#MyAppName}
 DisableProgramGroupPage=yes
 ; Uncomment the following line to run in non administrative install mode (install for current user only.)
 ;PrivilegesRequired=lowest
+OutputDir=..\..\dist
 OutputBaseFilename=PrayerPlayerSetup
-; IMPORTANT: Inno Setup expects .ico files. You might need to convert src/assets/mosque.png to .ico
-SetupIconFile=mosque.ico
+SetupIconFile=..\..\src\assets\mosque.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
