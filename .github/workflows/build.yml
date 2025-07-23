@@ -1,26 +1,33 @@
-name: Build and Release Prayer Player
+# .github/workflows/release.yml
+
+name: Build, Test, and Release
 
 on:
   push:
     branches:
       - main
     tags:
-      - 'v*.*.*'
+      - 'v*.*.*' # e.g., v1.0.0, v1.2.3
   pull_request:
     branches:
       - main
 
 jobs:
+  ##################################################
+  #                LINT & TEST JOB                 #
+  ##################################################
   test-and-lint:
+    name: 🧪 Lint and Test
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+          cache: 'pip' # Cache pip dependencies to speed up subsequent runs
 
       - name: Install dependencies
         run: |
@@ -28,41 +35,41 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
 
-      - name: Lint with ruff
+      - name: Lint with Ruff
         run: ruff check .
 
-      
+      - name: Run tests with Pytest
+        run: pytest # Assumes you have tests configured to run with the `pytest` command
 
-  build-and-package:
+  ##################################################
+  #                   BUILD JOB                    #
+  ##################################################
+  build:
+    name: 🏗️ Build for ${{ matrix.os_name }}
     needs: test-and-lint
-    environment: dry_run
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-22.04
-            python-version: '3.10'
-            asset_name: prayer-player-ubuntu.deb
-            asset_path: dist/*.deb
+            os_name: ubuntu
+            asset_glob: dist/*.deb
           - os: macos-latest
-            python-version: '3.10'
-            asset_name: prayer-player-macos.dmg
-            asset_path: dist/*.dmg
+            os_name: macos
+            asset_glob: dist/*.dmg
           - os: windows-latest
-            python-version: '3.10'
-            asset_name: prayer-player-windows.exe
-            asset_path: dist/PrayerPlayerSetup.exe
-
-    runs-on: ${{ matrix.os }}
+            os_name: windows
+            asset_glob: dist/PrayerPlayerSetup.exe
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: '3.10'
 
       - name: Install Linux GUI dependencies
         if: runner.os == 'Linux'
@@ -70,113 +77,64 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libegl1 libpulse0 libxcb-cursor0 libasound2-dev alsa-utils libqt6gui6 libqt6widgets6
 
-      - name: List dist directory before packaging (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          echo "Listing contents of dist/ before packaging:"
-          Get-ChildItem dist -Recurse || true
+      - name: Create Google Client Config from Secret
+        # This is more secure than passing the secret as a command-line argument.
+        # Your build.py script will need to be updated to read this file.
+        run: echo "${{ secrets.GOOGLE_CLIENT_CONFIG }}" > src/config/security/google_client_config.json
+        shell: bash
 
       - name: Build application
-        run: python build.py --release --google-client-config '${{ secrets.GOOGLE_CLIENT_CONFIG }}'
+        run: python build.py --release
 
-      
-
-      - name: Dry run built application (Linux)
-        if: runner.os == 'Linux'
+      - name: Smoke Test Application
+        # This step runs a quick check on the built application.
+        # `continue-on-error: true` prevents the workflow from failing if the smoke test fails.
+        continue-on-error: true
         run: |
-          # Install xvfb for headless GUI testing
-          sudo apt-get update
-          sudo apt-get install -y xvfb
-          # Run the application in a virtual display with dry run arguments
-          dist/PrayerPlayer --dry-run --country "Germany" --city "Deggendorf" || true
-
-      - name: Dry run built application (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          # Run the application directly with dry run arguments
-          dist/PrayerPlayer.app/Contents/MacOS/PrayerPlayer --dry-run --country "Germany" --city "Deggendorf" || true
-
-      - name: Debug Windows Build Artifacts
-        if: runner.os == 'Windows'
-        run: |
-          echo "Listing contents of dist/PrayerPlayer:"
-          Get-ChildItem dist/PrayerPlayer -Recurse
-          echo ""
-          echo "Contents of src/config/security/google_client_config.json:"
-          Get-Content src/config/security/google_client_config.json || true
-
-      - name: Dry run built application (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          # Run the application directly with dry run arguments
-          & .\dist\PrayerPlayer\PrayerPlayer.exe --dry-run --country "Germany" --city "Deggendorf" || true
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.asset_name }}
-          path: ${{ matrix.asset_path }}
-
-  create-release:
-    needs: build-and-package
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: dist
-
-      - name: Check if release already exists
-        id: check_release
-        run: |
-          set +e # Don't exit on error
-          RELEASE_EXISTS=$(curl -s -o /dev/null -w "%{\nhttp_code}" \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ github.ref }}" \
-            || echo "404") # Default to 404 if curl fails
-          echo "Release check HTTP code: $RELEASE_EXISTS"
-          if [ "$RELEASE_EXISTS" == "200" ]; then
-            echo "release_exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "release_exists=false" >> $GITHUB_OUTPUT
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            sudo apt-get install -y xvfb
+            xvfb-run dist/PrayerPlayer --dry-run --country "Germany" --city "Deggendorf"
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            dist/PrayerPlayer.app/Contents/MacOS/PrayerPlayer --dry-run --country "Germany" --city "Deggendorf"
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            ./dist/PrayerPlayer/PrayerPlayer.exe --dry-run --country "Germany" --city "Deggendorf"
           fi
         shell: bash
 
-      - name: Create Release
-        id: create_release
-        if: steps.check_release.outputs.release_exists == 'false'
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
+          name: prayer-player-${{ matrix.os_name }}
+          path: ${{ matrix.asset_glob }}
 
-      - name: Upload Release Asset (Ubuntu)
-        uses: actions/upload-release-asset@v1
+  ##################################################
+  #                  RELEASE JOB                   #
+  ##################################################
+  release:
+    name: 🚀 Create Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to create a release and upload assets
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: dist/prayer-player-ubuntu.deb
-          asset_name: PrayerPlayer-Ubuntu.deb
-          asset_content_type: application/vnd.debian.binary-package
+          path: dist # Artifacts will be downloaded into subdirectories (e.g., dist/prayer-player-ubuntu/)
 
-      - name: Upload Release Asset (macOS)
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: dist/prayer-player-macos.dmg/PrayerPlayer.dmg
-          asset_name: PrayerPlayer-macOS.dmg
-          asset_content_type: application/octet-stream
+      - name: Display structure of downloaded files
+        # This step helps in debugging by showing the exact file structure before release.
+        run: ls -R dist
 
-      - name: Upload Release Asset (Windows)
-        uses: actions/upload-release-asset@v1
+      - name: Create GitHub Release and Upload Assets
+        # This single action creates the release and uploads all matching files.
+        # It handles the logic of finding the files within the directories
+        # created by download-artifact, which fixes the 'EISDIR' error.
+        uses: softprops/action-gh-release@v2
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: dist/prayer-player-windows.exe
-          asset_name: PrayerPlayerSetup-Windows.exe
-          asset_content_type: application/vnd.microsoft.portable-executable
+          files: |
+            dist/prayer-player-ubuntu/*.deb
+            dist/prayer-player-macos/*.dmg
+            dist/prayer-player-windows/*.exe
+          fail_on_unmatched_files: true
