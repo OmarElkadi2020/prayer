@@ -111,10 +111,12 @@ class PrayerScheduler:
 
             LOG.info(f"Playing Adhan from {adhan_path}")
             self.action_executor.play_audio(adhan_path)
-            wait_for_playback_to_finish()
+            if not isinstance(self.action_executor, DryRunActionExecutor):
+                wait_for_playback_to_finish()
             LOG.info("Adhan finished. Playing Duaa.")
             self.action_executor.play_audio(duaa_path)
-            wait_for_playback_to_finish()
+            if not isinstance(self.action_executor, DryRunActionExecutor):
+                wait_for_playback_to_finish()
             LOG.info("Duaa finished.")
 
         except Exception as e:

@@ -157,8 +157,7 @@ class GoogleCalendarService(CalendarService):
                     try:
                         event_start_datetime = datetime.fromisoformat(event_start_datetime_str).astimezone(utc_zone)
                         if event.get('summary', '').lower() == summary.lower() and \
-                           event_start_datetime.hour == actual_start_time.hour and \
-                           event_start_datetime.minute == actual_start_time.minute:
+                           event_start_datetime.day == actual_start_time.day:
                             LOG.info(f"Event '{summary}' at {actual_start_time.strftime('%H:%M')} already exists in Calendar for today. Skipping re-adding it.")
                             return False
                     except ValueError:
