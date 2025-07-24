@@ -12,6 +12,7 @@ from src.config.security import TZ, BUSY_SLOT, LOG
 from src.qt_utils import run_in_qt_thread
 from src.actions_executor import ActionExecutor, DryRunActionExecutor
 from src.shared.event_bus import EventBus
+from src.shared.audio_player import wait_for_playback_to_finish
 from src.domain.config_messages import ConfigurationChangedEvent
 from src.domain.enums import AppState
 from src.domain.scheduler_messages import ApplicationStateChangedEvent, ScheduleRefreshedEvent
@@ -110,8 +111,10 @@ class PrayerScheduler:
 
             LOG.info(f"Playing Adhan from {adhan_path}")
             self.action_executor.play_audio(adhan_path)
+            wait_for_playback_to_finish()
             LOG.info("Adhan finished. Playing Duaa.")
             self.action_executor.play_audio(duaa_path)
+            wait_for_playback_to_finish()
             LOG.info("Duaa finished.")
 
         except Exception as e:

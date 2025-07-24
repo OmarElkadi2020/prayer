@@ -13,6 +13,7 @@ from src.gui.settings_window import SettingsWindow
 from src import scheduler
 from src.qt_utils import run_in_qt_thread
 from src.shared.event_bus import EventBus
+from src.shared.audio_player import stop_playback
 from src.domain.enums import AppState
 from src.domain.scheduler_messages import ApplicationStateChangedEvent, ScheduleRefreshedEvent
 from src.domain.notification_messages import FocusModeRequestedEvent
@@ -99,7 +100,8 @@ def check_for_updates(checked=False):
 @run_in_qt_thread
 def quit_app(checked=False):
     """Safely quits the QApplication."""
-    LOG.info("Quit action triggered from tray icon menu.")
+    LOG.info("Quit action triggered from tray icon menu. Stopping audio playback and quitting application.")
+    stop_playback()
     QApplication.instance().quit()
 
 
