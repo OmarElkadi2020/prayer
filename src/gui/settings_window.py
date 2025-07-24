@@ -284,7 +284,7 @@ class SettingsWindow(QWidget):
         focus_desc.setWordWrap(True)
         layout.addWidget(focus_desc, 5, 0)
 
-        link_label = QLabel("<a href='https://github.com/user/prayer-player'>Visit on GitHub</a>")
+        link_label = QLabel("<a href='https://github.com/OmarElkadi2020/prayer/'>Visit on GitHub</a>")
         link_label.setOpenExternalLinks(True)
         layout.addWidget(link_label, 6, 0)
 

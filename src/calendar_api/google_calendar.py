@@ -152,9 +152,18 @@ class GoogleCalendarService(CalendarService):
             day_end = day_start + timedelta(days=1)
             events = self.get_events(day_start, day_end)
             for event in events:
-                if event.get('summary', '').lower() == summary.lower():
-                    LOG.info(f"Event '{summary}' already exists in Calender for today. Skipping readding it.")
-                    return False
+                event_start_datetime_str = event.get('start', {}).get('dateTime')
+                if event_start_datetime_str:
+                    try:
+                        event_start_datetime = datetime.fromisoformat(event_start_datetime_str).astimezone(utc_zone)
+                        if event.get('summary', '').lower() == summary.lower() and \
+                           event_start_datetime.hour == actual_start_time.hour and \
+                           event_start_datetime.minute == actual_start_time.minute:
+                            LOG.info(f"Event '{summary}' at {actual_start_time.strftime('%H:%M')} already exists in Calendar for today. Skipping re-adding it.")
+                            return False
+                    except ValueError:
+                        LOG.warning(f"Could not parse event start time: {event_start_datetime_str}")
+                        continue
 
             self.create_event(summary, actual_start_time, actual_slot_end, "Scheduled by Prayer App")
             LOG.info(f"📅 Added busy block: {summary} at {actual_start_time.strftime('%H:%M')}-{actual_slot_end.strftime('%H:%M')}")
