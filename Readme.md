@@ -1,4 +1,4 @@
-[![Build and Release Prayer Player](https://github.com/OmarElkadi2020/prayer/actions/workflows/build.yml/badge.svg)](https://github.com/OmarElkadi2020/prayer/actions/workflows/build.yml)
+[![Release Prayer](https://github.com/OmarElkadi2020/prayer/actions/workflows/build.yml/badge.svg)](https://github.com/OmarElkadi2020/prayer/releases)
 
 # Prayer Player
 
@@ -15,7 +15,7 @@ Prayer Player is an intelligent assistant that helps you seamlessly integrate yo
 
 ## Installation
 
-The easiest way to install Prayer Player is to download the latest installer for your operating system from the [**GitHub Releases**](https://github.com/OmarElkadi2020/prayer/actions/workflows/release.yml) page.
+The easiest way to install Prayer Player is to download the latest installer for your operating system from the [**GitHub Releases**](https://github.com/OmarElkadi2020/prayer/releases) page.
 
 | OS      | File Type |
 | :------ | :-------- |
