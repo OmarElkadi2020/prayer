@@ -13,23 +13,12 @@ LOG = logging.getLogger(__name__)
 _active_playback_processes: list[subprocess.Popen] = []
 _playback_finished_event = threading.Event()
 
-def _play_with_playsound(audio_path: str):
+def _play_with_playsound(audio_path: str) -> subprocess.Popen:
     """Plays audio using the playsound library as a fallback, via subprocess."""
-    global _active_playback_processes
-    try:
-        command = [sys.executable, "-c", f"from playsound import playsound; playsound('{audio_path}')"]
-        LOG.info(f"📢 Attempting to play audio using 'playsound' via subprocess: {audio_path}")
-        process = subprocess.Popen(command)
-        _active_playback_processes.append(process)
-        process.wait(timeout=180)
-        LOG.info("Playback finished successfully via 'playsound' subprocess.")
-    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
-        LOG.error(f"playsound subprocess failed with error: {e}")
-    except Exception as e:
-        LOG.error(f"An unexpected error occurred during playsound subprocess execution: {e}")
-    finally:
-        if process in _active_playback_processes:
-            _active_playback_processes.remove(process)
+    command = [sys.executable, "-c", f"from playsound import playsound; playsound('{audio_path}')"]
+    LOG.info(f"📢 Attempting to play audio using 'playsound' via subprocess: {audio_path}")
+    process = subprocess.Popen(command)
+    return process
 
 def play(audio_path: str) -> None:
     """
@@ -69,7 +58,10 @@ def play(audio_path: str) -> None:
                 process.wait(timeout=180)
                 LOG.info("Playback finished successfully via 'aplay'.")
             else:
-                _play_with_playsound(effective_audio_path)
+                process = _play_with_playsound(effective_audio_path)
+                _active_playback_processes.append(process)
+                process.wait(timeout=180)
+                LOG.info("Playback finished successfully via playsound.")
         except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
             LOG.error(f"aplay failed with error: {e}. Falling back to playsound.")
             _play_with_playsound(effective_audio_path)
