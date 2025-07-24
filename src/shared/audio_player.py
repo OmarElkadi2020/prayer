@@ -9,6 +9,16 @@ import logging
 
 LOG = logging.getLogger(__name__)
 
+def _play_with_playsound(audio_path: str):
+    """Plays audio using the playsound library as a fallback."""
+    try:
+        from playsound import playsound
+        LOG.info(f"📢 Attempting to play audio using 'playsound': {audio_path}")
+        playsound(audio_path)
+        LOG.info("Playback finished successfully via 'playsound'.")
+    except Exception as e:
+        LOG.error(f"An unexpected error occurred during playsound execution: {e}")
+
 def play(audio_path: str) -> None:
     """
     Plays the given audio file using a suitable method for the current platform.
@@ -40,23 +50,17 @@ def play(audio_path: str) -> None:
     if sys.platform.startswith('linux'):
         LOG.info(f"📢 Attempting to play audio using 'aplay': {effective_audio_path}")
         try:
-            subprocess.run(['aplay', effective_audio_path], check=True)
+            subprocess.run(['aplay', effective_audio_path], check=True, timeout=180)
             LOG.info("Playback finished successfully via 'aplay'.")
-        except subprocess.CalledProcessError as e:
-            LOG.error(f"aplay failed with error: {e}")
-        except FileNotFoundError:
-            LOG.error("aplay command not found. Please ensure alsa-utils is installed.")
+        except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
+            LOG.error(f"aplay failed with error: {e}. Falling back to playsound.")
+            _play_with_playsound(effective_audio_path)
         except Exception as e:
-            LOG.error(f"An unexpected error occurred during aplay execution: {e}")
+            LOG.error(f"An unexpected error occurred during aplay execution: {e}. Falling back to playsound.")
+            _play_with_playsound(effective_audio_path)
     else:
-        # Fallback to playsound for other platforms (macOS, Windows)
-        from playsound import playsound
-        LOG.info(f"📢 Attempting to play audio using 'playsound': {effective_audio_path}")
-        try:
-            playsound(effective_audio_path)
-            LOG.info("Playback finished successfully via 'playsound'.")
-        except Exception as e:
-            LOG.error(f"An unexpected error occurred during playsound execution: {e}")
+        # For other platforms, use playsound directly
+        _play_with_playsound(effective_audio_path)
 
     # Clean up the temporary file if it was created
     if effective_audio_path != audio_path and os.path.exists(effective_audio_path):

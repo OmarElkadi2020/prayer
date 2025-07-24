@@ -69,6 +69,8 @@ def main(argv: list[str] | None = None) -> int:
 
     # --- Service Initialization ---
     config_service = ConfigService(event_bus)
+    from src.gui.notification_service import NotificationService
+    notification_service = NotificationService(event_bus)
     
     # --- Register Handlers ---
     event_bus.register(SaveConfigurationCommand, config_service.handle_save_command)
