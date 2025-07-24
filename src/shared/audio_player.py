@@ -10,78 +10,75 @@ import threading
 
 LOG = logging.getLogger(__name__)
 
-_current_playback_process: subprocess.Popen | None = None
-_playback_thread: threading.Thread | None = None
+_active_playback_processes: list[subprocess.Popen] = []
 _playback_finished_event = threading.Event()
 
 def _play_with_playsound(audio_path: str):
     """Plays audio using the playsound library as a fallback, via subprocess."""
-    global _current_playback_process
+    global _active_playback_processes
     try:
-        # Use sys.executable to ensure the correct python interpreter is used
-        # Use -c and import playsound to run it as a module
         command = [sys.executable, "-c", f"from playsound import playsound; playsound('{audio_path}')"]
         LOG.info(f"📢 Attempting to play audio using 'playsound' via subprocess: {audio_path}")
-        _current_playback_process = subprocess.Popen(command)
-        _current_playback_process.wait(timeout=180) # Wait for process to finish
+        process = subprocess.Popen(command)
+        _active_playback_processes.append(process)
+        process.wait(timeout=180)
         LOG.info("Playback finished successfully via 'playsound' subprocess.")
     except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
         LOG.error(f"playsound subprocess failed with error: {e}")
     except Exception as e:
         LOG.error(f"An unexpected error occurred during playsound subprocess execution: {e}")
+    finally:
+        if process in _active_playback_processes:
+            _active_playback_processes.remove(process)
 
 def play(audio_path: str) -> None:
     """
     Plays the given audio file using a suitable method for the current platform.
     This is a non-blocking call.
     """
-    global _current_playback_process, _playback_thread
+    global _active_playback_processes
 
-    _playback_finished_event.clear() # Clear the event at the start of a new playback
+    _playback_finished_event.clear()
 
     effective_audio_path = audio_path
 
-    # If running in a PyInstaller bundle and the audio_path doesn't exist,
-    # it might be a bundled resource that needs to be extracted to a temporary file.
     if getattr(sys, 'frozen', False) and not os.path.exists(audio_path):
         try:
-            # Read the binary content of the default adhan.wav from the package
             audio_content = resources.read_binary('assets', 'adhan.wav')
-            
-            # Create a temporary file and write the content to it
             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio_file:
                 temp_audio_file.write(audio_content)
                 effective_audio_path = temp_audio_file.name
-            
             LOG.info(f"Extracted bundled adhan.wav to temporary file: {effective_audio_path}")
         except Exception as e:
             LOG.error(f"Error extracting bundled adhan.wav: {e}")
-            effective_audio_path = None # Indicate failure to get a valid path
+            effective_audio_path = None
 
     if not effective_audio_path or not os.path.exists(effective_audio_path):
         LOG.error(f"Audio file not found: {audio_path} (effective: {effective_audio_path})")
-        _playback_finished_event.set() # Set event even on error to unblock waiters
+        _playback_finished_event.set()
         return
 
     def _playback_target():
-        global _current_playback_process
+        global _active_playback_processes
+        process = None
         try:
             if sys.platform.startswith('linux'):
                 LOG.info(f"📢 Attempting to play audio using 'aplay': {effective_audio_path}")
-                try:
-                    _current_playback_process = subprocess.Popen(['aplay', effective_audio_path])
-                    _current_playback_process.wait(timeout=180) # Wait for process to finish
-                    LOG.info("Playback finished successfully via 'aplay'.")
-                except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
-                    LOG.error(f"aplay failed with error: {e}. Falling back to playsound.")
-                    _play_with_playsound(effective_audio_path)
-                except Exception as e:
-                    LOG.error(f"An unexpected error occurred during aplay execution: {e}. Falling back to playsound.")
-                    _play_with_playsound(effective_audio_path)
+                process = subprocess.Popen(['aplay', effective_audio_path])
+                _active_playback_processes.append(process)
+                process.wait(timeout=180)
+                LOG.info("Playback finished successfully via 'aplay'.")
             else:
-                # For other platforms, use playsound directly
                 _play_with_playsound(effective_audio_path)
+        except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
+            LOG.error(f"aplay failed with error: {e}. Falling back to playsound.")
+            _play_with_playsound(effective_audio_path)
+        except Exception as e:
+            LOG.error(f"An unexpected error occurred during aplay execution: {e}. Falling back to playsound.")
+            _play_with_playsound(effective_audio_path)
         finally:
+            if process and process in _active_playback_processes:
+                _active_playback_processes.remove(process)
             # Clean up the temporary file if it was created after playback finishes
             if effective_audio_path != audio_path and os.path.exists(effective_audio_path):
                 try:
@@ -89,29 +86,30 @@ def play(audio_path: str) -> None:
                     LOG.info(f"Cleaned up temporary audio file: {effective_audio_path}")
                 except Exception as e:
                     LOG.warning(f"Could not remove temporary audio file {effective_audio_path}: {e}")
-            _current_playback_process = None # Clear the process after it finishes
-            _playback_finished_event.set() # Signal that playback is finished
+            if not _active_playback_processes: # Only set event if all playback is done
+                _playback_finished_event.set()
 
-    _playback_thread = threading.Thread(target=_playback_target)
-    _playback_thread.start()
+    threading.Thread(target=_playback_target).start()
 
 def wait_for_playback_to_finish():
-    """Waits for the current audio playback to finish."""
+    """Waits for all active audio playbacks to finish."""
     LOG.info("Waiting for audio playback to finish...")
     _playback_finished_event.wait()
     LOG.info("Audio playback finished.")
 
 def stop_playback():
     """Stops any currently active audio playback."""
-    global _current_playback_process
-    if _current_playback_process and _current_playback_process.poll() is None:
-        LOG.info("Attempting to stop audio playback.")
-        _current_playback_process.terminate()
-        try:
-            _current_playback_process.wait(timeout=5) # Give it a moment to terminate
-            LOG.info("Audio playback stopped.")
-        except subprocess.TimeoutExpired:
-            LOG.warning("Audio playback process did not terminate in time, killing it.")
-            _current_playback_process.kill()
-    _current_playback_process = None # Ensure it's cleared after attempt to stop
+    global _active_playback_processes
+    for process in list(_active_playback_processes): # Iterate over a copy as list will be modified
+        if process.poll() is None: # Process is still running
+            LOG.info(f"Attempting to stop audio playback process {process.pid}.")
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+                LOG.info(f"Audio playback process {process.pid} stopped.")
+            except subprocess.TimeoutExpired:
+                LOG.warning(f"Audio playback process {process.pid} did not terminate in time, killing it.")
+                process.kill()
+        if process in _active_playback_processes:
+            _active_playback_processes.remove(process)
     _playback_finished_event.set() # Set the event to unblock any waiting threads
