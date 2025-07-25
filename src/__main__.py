@@ -92,8 +92,8 @@ def main(argv: list[str] | None = None) -> int:
             calendar_service = GoogleCalendarService(creds)
 
     # Determine action executor
-    from src.actions_executor import DefaultActionExecutor, DryRunActionExecutor
-    action_executor = DryRunActionExecutor() if args.dry_run else DefaultActionExecutor(event_bus)
+    from src.actions_executor import ActionExecutor
+    action_executor = ActionExecutor(event_bus, dry_run=args.dry_run)
 
     # Initialize scheduler
     scheduler = PrayerScheduler(

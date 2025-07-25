@@ -105,18 +105,12 @@ def quit_app(checked=False):
     QApplication.instance().quit()
 
 
-def setup_tray_icon(argv: list[str] | None = None, scheduler_instance: scheduler.PrayerScheduler = None, event_bus: EventBus | None = None, dry_run: bool = False):
+def setup_tray_icon(argv: list[str] | None = None, scheduler_instance: scheduler.PrayerScheduler = None, event_bus: EventBus | None = None):
     """
     Initializes the QApplication and the system tray icon.
     """
     app = QApplication.instance() or QApplication(sys.argv if argv is None else [sys.argv[0]] + argv)
     app.setQuitOnLastWindowClosed(False)
-
-    if dry_run:
-        LOG.info("Dry run mode activated. Skipping GUI initialization.")
-        if scheduler_instance:
-            scheduler_instance.run()
-        return 0
 
     ICONS = {state: create_q_icon(BASE_ICON_PATH, state) for state in AppState}
 

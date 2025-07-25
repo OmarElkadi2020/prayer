@@ -10,7 +10,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from src.config.security import TZ, BUSY_SLOT, LOG
 from src.qt_utils import run_in_qt_thread
-from src.actions_executor import ActionExecutor, DryRunActionExecutor
+from src.actions_executor import ActionExecutor
 from src.shared.event_bus import EventBus
 from src.shared.audio_player import wait_for_playback_to_finish
 from src.domain.config_messages import ConfigurationChangedEvent
@@ -111,12 +111,10 @@ class PrayerScheduler:
 
             LOG.info(f"Playing Adhan from {adhan_path}")
             self.action_executor.play_audio(adhan_path)
-            if not isinstance(self.action_executor, DryRunActionExecutor):
-                wait_for_playback_to_finish()
+            wait_for_playback_to_finish()
             LOG.info("Adhan finished. Playing Duaa.")
             self.action_executor.play_audio(duaa_path)
-            if not isinstance(self.action_executor, DryRunActionExecutor):
-                wait_for_playback_to_finish()
+            wait_for_playback_to_finish()
             LOG.info("Duaa finished.")
 
         except Exception as e:
@@ -127,7 +125,7 @@ class PrayerScheduler:
             self.event_bus.publish(ApplicationStateChangedEvent(new_state=AppState.IDLE))
             # Do not update GUI components in a dry run, as there is no GUI.
             # This also prevents a race condition on scheduler shutdown.
-            if not isinstance(self.action_executor, DryRunActionExecutor):
+            if not self.action_executor._dry_run:
                 self._update_next_prayer_info()
 
     def run_dry_run_simulation(self, city: str, country: str, method: Optional[int], school: Optional[int]):

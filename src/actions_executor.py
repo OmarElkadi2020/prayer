@@ -5,54 +5,32 @@ from src.shared.event_bus import EventBus
 from src.domain.notification_messages import AudioPlaybackRequestedEvent, FocusModeRequestedEvent
 import threading
 
-class ActionExecutor(Protocol):
+class ActionExecutor:
     """
-    Protocol for executing actions like playing audio and triggering focus mode.
+    Executes actions like playing audio and triggering focus mode.
     This allows for decoupling the scheduler from the GUI.
     """
-    def play_audio(self, audio_path: str):
-        ...
-
-    def trigger_focus_mode(self):
-        ...
-
-    def set_dry_run_event(self, event: threading.Event):
-        ...
-
-class DefaultActionExecutor:
-    """
-    The default implementation of ActionExecutor. It publishes events to request actions.
-    """
-    def __init__(self, event_bus: EventBus):
+    def __init__(self, event_bus: EventBus, dry_run: bool = False):
         self._event_bus = event_bus
-
-    def play_audio(self, audio_path: str):
-        LOG.info(f"DefaultActionExecutor: Requesting audio playback for {audio_path}")
-        self._event_bus.publish(AudioPlaybackRequestedEvent(audio_path=audio_path))
-
-    def trigger_focus_mode(self):
-        LOG.info("DefaultActionExecutor: Requesting focus mode.")
-        self._event_bus.publish(FocusModeRequestedEvent())
-
-    def set_dry_run_event(self, event: threading.Event):
-        # The default executor doesn't need to handle this event.
-        pass
-
-class DryRunActionExecutor:
-    """
-    An implementation of ActionExecutor for dry runs that only logs actions.
-    """
-    def __init__(self):
+        self._dry_run = dry_run
         self._dry_run_event: threading.Event | None = None
 
     def play_audio(self, audio_path: str):
-        LOG.info(f"DryRunActionExecutor: Would play audio from {audio_path}")
-        # In a dry run, we might still want to signal that the "audio" has "finished"
-        if self._dry_run_event:
-            self._dry_run_event.set()
+        if self._dry_run:
+            LOG.info(f"ActionExecutor (dry_run): Would play audio from {audio_path}")
+            if self._dry_run_event:
+                self._dry_run_event.set()
+        else:
+            LOG.info(f"ActionExecutor: Requesting audio playback for {audio_path}")
+            self._event_bus.publish(AudioPlaybackRequestedEvent(audio_path=audio_path))
 
     def trigger_focus_mode(self):
-        LOG.info("DryRunActionExecutor: Would trigger focus mode.")
+        if self._dry_run:
+            LOG.info("ActionExecutor (dry_run): Would trigger focus mode.")
+        else:
+            LOG.info("ActionExecutor: Requesting focus mode.")
+            self._event_bus.publish(FocusModeRequestedEvent())
 
     def set_dry_run_event(self, event: threading.Event):
-        self._dry_run_event = event
+        if self._dry_run:
+            self._dry_run_event = event

@@ -19,7 +19,7 @@ class TestPrayerScheduler(unittest.TestCase):
         self.mock_event_bus = Mock(spec=EventBus)
         self.mock_calendar_service = Mock()
         self.mock_prayer_times_func = Mock()
-        self.mock_action_executor = Mock(spec=ActionExecutor)
+        self.mock_action_executor = Mock()
         self.mock_config_service = Mock()
 
         self.scheduler = PrayerScheduler(
