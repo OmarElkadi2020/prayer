@@ -1,5 +1,3 @@
-
-
 import re
 import random
 import os
@@ -142,7 +140,6 @@ class FocusStepsPresenter:
                 parsed_content.append(('title', '<b>الهدف:</b>'))
                 parsed_content.append(('content', content))
             elif item_type == 'evidence':
-                evidence_text, benefit_text = content
                 parsed_content.append(('title', '<b>الدليل:</b>'))
                 parsed_content.append(('content', evidence_text))
                 parsed_content.append(('title', '<em>الفائدة الروحية:</em>'))
@@ -150,3 +147,15 @@ class FocusStepsPresenter:
         
         return parsed_content
 
+    def show_focus_steps():
+        """
+        Initializes and displays the focus steps view.
+        """
+        LOG.info("FocusStepsPresenter: show_focus_steps called.")
+        if self.view:
+            self.current_step_index = 0
+            self._notify_view_update()
+            self.view.show_view()
+            LOG.info("Focus steps view displayed.")
+        else:
+            LOG.error("Focus steps view not attached.")
