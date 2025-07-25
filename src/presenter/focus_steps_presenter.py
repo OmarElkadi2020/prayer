@@ -147,7 +147,7 @@ class FocusStepsPresenter:
         
         return parsed_content
 
-    def show_focus_steps():
+    def show_focus_steps(self):
         """
         Initializes and displays the focus steps view.
         """
