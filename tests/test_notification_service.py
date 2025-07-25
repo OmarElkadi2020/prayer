@@ -19,9 +19,9 @@ class TestNotificationService(unittest.TestCase):
 
         mock_play.assert_called_once_with(mock_audio_path)
 
+    @patch('src.focus_steps_view.run')
     @patch('PySide6.QtCore.QTimer.singleShot', side_effect=lambda *args, **kwargs: args[1]() if len(args) > 1 else None)
-    @patch('src.gui.notification_service.NotificationService._run_focus_steps')
-    def test_handle_focus_mode_request(self, mock_run_focus_steps, mock_single_shot):
+    def test_handle_focus_mode_request(self, mock_single_shot, mock_run_focus_steps):
         event = FocusModeRequestedEvent()
 
         self.notification_service.handle_focus_mode_requested(event)

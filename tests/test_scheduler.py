@@ -88,10 +88,17 @@ class TestPrayerScheduler(unittest.TestCase):
         # 1 dry run job * 2 (focus + adhan) + 1 daily refresh job = 3
         self.assertEqual(len(self.scheduler.scheduler.get_jobs()), 3)
 
-    def test_play_adhan_and_duaa(self):
+    @patch('src.shared.audio_player._playback_finished_event')
+    def test_play_adhan_and_duaa(self, mock_event):
         from src.config.security import get_asset_path
 
+        # Mock the action executor to set the event
+        self.mock_action_executor.play_audio.side_effect = lambda audio_path: mock_event.set()
+
         self.scheduler.play_adhan_and_duaa()
+
+        # Check that the event was set
+        mock_event.set.assert_called()
 
         expected_calls = [
             call(str(get_asset_path('adhan.wav'))),
