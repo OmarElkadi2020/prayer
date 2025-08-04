@@ -17,6 +17,8 @@ from src.shared.audio_player import stop_playback
 from src.domain.enums import AppState
 from src.domain.scheduler_messages import ApplicationStateChangedEvent, ScheduleRefreshedEvent
 from src.domain.notification_messages import FocusModeRequestedEvent
+from src.presenter.focus_steps_presenter import FocusStepsPresenter
+from src.focus_steps_view import FocusStepsView
 
 # Globals
 settings_window = None
@@ -90,7 +92,23 @@ def start_focus_mode(checked=False, event_bus: EventBus | None = None):
         LOG.error("Cannot trigger focus mode without an event bus.")
         return
     LOG.info("Triggering focus mode from tray icon.")
-    event_bus.publish(FocusModeRequestedEvent())
+    show_focus_window(FocusModeRequestedEvent(), event_bus)
+
+@run_in_qt_thread
+def show_focus_window(event: FocusModeRequestedEvent, event_bus: EventBus | None = None):
+    """Creates and shows the focus steps window."""
+    global focus_window
+    if event_bus is None:
+        LOG.error("Cannot open focus window without an event bus.")
+        return
+
+    if focus_window is None or not focus_window.isVisible():
+        presenter = FocusStepsPresenter()
+        focus_window = FocusStepsView(presenter)
+        focus_window.show()
+        focus_window.activateWindow()
+    else:
+        focus_window.activateWindow()
 
 @run_in_qt_thread
 def check_for_updates(checked=False):
@@ -147,6 +165,7 @@ def setup_tray_icon(argv: list[str] | None = None, scheduler_instance: scheduler
     # --- Register Event Handlers ---
     event_bus.register(ApplicationStateChangedEvent, on_state_update)
     event_bus.register(ScheduleRefreshedEvent, on_schedule_refresh)
+    event_bus.register(FocusModeRequestedEvent, lambda event: show_focus_window(event, event_bus))
 
     if scheduler_instance:
         scheduler_instance.run()

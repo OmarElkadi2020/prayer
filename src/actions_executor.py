@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import Protocol
 from src.config.security import LOG
 from src.shared.event_bus import EventBus
 from src.domain.notification_messages import AudioPlaybackRequestedEvent, FocusModeRequestedEvent

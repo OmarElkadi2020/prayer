@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 import threading
 
 from src.scheduler import PrayerScheduler
-from src.actions_executor import ActionExecutor
 from src.shared.event_bus import EventBus
 from src.domain.scheduler_messages import ApplicationStateChangedEvent
 from src.domain.enums import AppState

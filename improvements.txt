@@ -1,0 +1,42 @@
+ Yes, there is a clear need to introduce new tests to ensure the app works as expected, especially for critical functionalities and integration points.
+  While some existing tests cover basic functionality, several key areas require more comprehensive testing.
+
+  Here are the high-priority areas where new tests would significantly improve the project's robustness:
+
+   1. Service Management (`src/__main__.py`, `src/platform/service.py`):
+       * What to test: The installation, uninstallation, enabling, and disabling of the application as a system service across different operating systems
+         (mocking OS commands). This is crucial for deployment and auto-startup.
+       * Why: Incorrect service setup can lead to the app not running at startup or not being properly removed.
+
+   2. Google Calendar Integration (`src/auth/google_auth.py`, `src/calendar_api/google_calendar.py`):
+       * What to test:
+           * Authentication Flow: Comprehensive tests for get_google_credentials covering scenarios like no existing token, expired token, forced
+             re-authentication, and missing client configuration files.
+           * Calendar Operations: Detailed unit tests for GoogleCalendarService methods (get_events, create_event, delete_event) by mocking the Google API
+             client.
+           * Slot Finding Logic: Extensive unit tests for find_first_available_slot with various calendar event configurations (overlapping events, all-day
+              events, events spanning midnight) to ensure it always finds the correct available time.
+           * Event Addition Logic: Tests for add_event to verify it correctly uses find_first_available_slot and prevents duplicate events for the same
+             prayer.
+       * Why: This is a core feature. Bugs here could lead to incorrect prayer times being scheduled, calendar clutter, or authentication failures.
+
+   3. Configuration Management (`src/config/security/__init__.py`, `src/services/config_service.py`):
+       * What to test:
+           * Loading/Saving: Robust tests for load_config and save_config, including scenarios with missing config files, corrupted JSON, and ensuring data
+              integrity.
+           * Argument Parsing: Verify that parse_args correctly interprets all command-line arguments and that they are reflected in the application's
+             behavior (e.g., dry-run flag, log level).
+       * Why: Incorrect configuration handling can lead to unexpected application behavior or data loss.
+
+   4. Unified Action Executor (`src/actions_executor.py`):
+       * What to test: Dedicated unit tests for the ActionExecutor to ensure its play_audio and trigger_focus_mode methods behave correctly in both normal
+         (publishing events) and dry-run (logging only) modes.
+       * Why: This is a central component for triggering actions. Thorough testing ensures consistent behavior across different operational modes.
+
+   5. Audio Playback (`src/shared/audio_player.py`):
+       * What to test: Mocked tests for play, wait_for_playback_to_finish, and stop_playback to ensure audio files are played correctly, playback
+         completion is signaled, and active processes can be terminated. This should cover platform-specific playback methods.
+       * Why: Audio playback is a primary user interaction.
+
+  These new tests would focus on the integration points and complex logic that are critical for the application's correct functioning and reliability in
+  a production environment.

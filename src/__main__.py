@@ -134,7 +134,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         LOG.warning("No city/country configured. Scheduler will not run.")
 
-    return tray_icon.setup_tray_icon(raw_argv, scheduler, event_bus, dry_run=args.dry_run)
+    return tray_icon.setup_tray_icon(raw_argv, scheduler, event_bus)
 
 
 if __name__ == "__main__":
